@@ -47,7 +47,7 @@ services:
       LC_COLLATE: C.UTF-8
       LC_CTYPE: C.UTF-8
     volumes:
-      - db_data_sessao:/var/lib/postgresql/18/data
+      - db_data_sessao:/var/lib/postgresql
       - ./agente_sessao/backup_agente_sessao_db_20260428_180546.sql:/docker-entrypoint-initdb.d/init.sql
     # You might want to map this to a different port to inspect it
     ports:
@@ -62,7 +62,7 @@ services:
       LC_COLLATE: C.UTF-8
       LC_CTYPE: C.UTF-8
     volumes:
-      - db_data_user:/var/lib/postgresql/18/data
+      - db_data_user:/var/lib/postgresql
       - ./user/backup_user_db_20260428_135953.sql:/docker-entrypoint-initdb.d/init.sql
     # You might want to map this to a different port to inspect it
     ports:
@@ -99,7 +99,7 @@ services:
       LC_COLLATE: C.UTF-8
       LC_CTYPE: C.UTF-8
     volumes:
-      - db_data_strategies:/var/lib/postgresql/18/data
+      - db_data_strategies:/var/lib/postgresql
       - ./strategies/backup_strategies_db_20260428_180541.sql:/docker-entrypoint-initdb.d/init.sql
     # You might want to map this to a different port to inspect it
     ports:
@@ -157,7 +157,7 @@ services:
       LC_COLLATE: C.UTF-8
       LC_CTYPE: C.UTF-8
     volumes:
-      - db_data_domain:/var/lib/postgresql/18/data
+      - db_data_domain:/var/lib/postgresql
       - ./domain/backup_domain_db_20260428_142036.sql:/docker-entrypoint-initdb.d/init.sql
     # You might want to map this to a different port to inspect it
     ports:
