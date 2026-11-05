@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Relatório de Desempenho — IA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; }
+        .report-card { border-left: 4px solid #667eea; }
+        .tips-card { border-left: 4px solid #28a745; }
+        .feedback-card { border-left: 4px solid #fd7e14; }
+        .star-btn { font-size: 1.5rem; cursor: pointer; color: #ccc; background: none; border: none; padding: 2px 4px; }
+        .star-btn.active { color: #ffc107; }
+        .star-btn:hover { color: #ffc107; }
+        .meta-badge { font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+<div class="container py-5" style="max-width: 800px;">
+
+    <div class="d-flex align-items-center mb-4 gap-3">
+        <a href="/" class="btn btn-outline-secondary btn-sm">← Voltar</a>
+        <h3 class="mb-0 fw-bold">🤖 Relatório de Desempenho — IA</h3>
+    </div>
+
+    {% if no_report %}
+    <!-- Estado: sem relatório ainda -->
+    <div class="card shadow-sm text-center py-5">
+        <div class="card-body">
+            <div style="font-size: 3rem;">📭</div>
+            <h5 class="mt-3 text-muted">Nenhum relatório gerado ainda</h5>
+            <p class="text-muted small mb-4">
+                O agente gera relatórios automaticamente a cada 2 dias.<br>
+                Para gerar agora (modo de teste), clique abaixo.
+            </p>
+            <button class="btn btn-primary" id="triggerBtn" onclick="triggerGeneration()">
+                ⚡ Gerar relatório agora
+            </button>
+            <div id="triggerFeedback" class="mt-3"></div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Cabeçalho do relatório -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+            <span class="badge bg-primary meta-badge me-1">
+                📊 {{ report.sessions_analyzed }} sessão(ões) analisada(s)
+            </span>
+            <span class="badge bg-secondary meta-badge">
+                🕐 Gerado em {{ report.generated_at[:10] if report.generated_at else 'N/A' }}
+            </span>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" id="triggerBtn" onclick="triggerGeneration()">
+            🔄 Regerar agora
+        </button>
+    </div>
+
+    <!-- Análise de desempenho -->
+    <div class="card shadow-sm mb-4 report-card">
+        <div class="card-header fw-semibold" style="background: linear-gradient(135deg,#667eea15,#764ba215);">
+            📈 Análise das suas sessões
+        </div>
+        <div class="card-body">
+            <p style="white-space: pre-wrap; line-height: 1.8;">{{ report.performance_summary }}</p>
+        </div>
+    </div>
+
+    <!-- Dicas -->
+    <div class="card shadow-sm mb-4 tips-card">
+        <div class="card-header fw-semibold" style="background: #28a74510;">
+            💡 Dicas para melhorar
+        </div>
+        <div class="card-body">
+            <p style="white-space: pre-wrap; line-height: 1.8;">{{ report.tips }}</p>
+        </div>
+    </div>
+
+    <!-- Feedback -->
+    {% if report.feedback %}
+    <!-- Feedback já enviado -->
+    <div class="card shadow-sm mb-4 feedback-card">
+        <div class="card-header fw-semibold" style="background: #fd7e1410;">
+            ✅ Seu feedback (enviado em {{ report.feedback_at[:10] if report.feedback_at else 'N/A' }})
+        </div>
+        <div class="card-body">
+            {% if report.feedback_rating %}
+            <div class="mb-2">
+                {% for i in range(1, 6) %}
+                    <span style="font-size:1.3rem; color: {{ '#ffc107' if i <= report.feedback_rating else '#ccc' }};">★</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <p class="mb-0 text-muted fst-italic">"{{ report.feedback }}"</p>
+        </div>
+    </div>
+    {% else %}
+    <!-- Formulário de feedback -->
+    <div class="card shadow-sm mb-4 feedback-card">
+        <div class="card-header fw-semibold" style="background: #fd7e1410;">
+            💬 Deixe seu feedback sobre este relatório
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">Sua resposta ajuda a IA a melhorar as análises futuras.</p>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Avaliação:</label>
+                <div id="starContainer">
+                    {% for i in range(1, 6) %}
+                    <button class="star-btn" data-value="{{ i }}" onclick="setRating({{ i }})">★</button>
+                    {% endfor %}
+                </div>
+                <input type="hidden" id="ratingValue" value="">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Comentário:</label>
+                <textarea id="feedbackText" class="form-control" rows="3"
+                    placeholder="O relatório foi útil? Alguma sugestão de melhoria?"></textarea>
+            </div>
+
+            <button class="btn btn-warning fw-bold" onclick="submitFeedback({{ report.id }})">
+                Enviar Feedback
+            </button>
+            <div id="feedbackStatus" class="mt-2"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}
+</div>
+
+<script>
+    let selectedRating = null;
+
+    function setRating(value) {
+        selectedRating = value;
+        document.getElementById('ratingValue').value = value;
+        document.querySelectorAll('.star-btn').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.value) <= value);
+        });
+    }
+
+    function submitFeedback(reportId) {
+        const feedback = document.getElementById('feedbackText').value.trim();
+        if (!feedback) {
+            document.getElementById('feedbackStatus').innerHTML =
+                '<span class="text-danger">Por favor, escreva um comentário.</span>';
+            return;
+        }
+
+        const btn = document.querySelector('[onclick^="submitFeedback"]');
+        if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+        fetch('/teacher/report/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ report_id: reportId, feedback, rating: selectedRating })
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('feedbackStatus').innerHTML =
+                '<span class="text-success fw-bold">✅ Feedback enviado! Obrigado.</span>';
+            setTimeout(() => location.reload(), 1500);
+        })
+        .catch(() => {
+            document.getElementById('feedbackStatus').innerHTML =
+                '<span class="text-danger">Erro ao enviar. Tente novamente.</span>';
+            if (btn) { btn.disabled = false; btn.textContent = 'Enviar Feedback'; }
+        });
+    }
+
+    function triggerGeneration() {
+        const btn = document.getElementById('triggerBtn');
+        const fb = document.getElementById('triggerFeedback');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando...'; }
+
+        fetch('/teacher/report/trigger', { method: 'POST' })
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (ok) {
+                if (fb) fb.innerHTML = '<div class="alert alert-success">Geração iniciada! Aguarde 10-15 segundos e recarregue a página.</div>';
+                setTimeout(() => location.reload(), 15000);
+            } else {
+                if (fb) fb.innerHTML = `<div class="alert alert-danger">Erro: ${data.error || 'Serviço indisponível. Verifique se todos os containers estão rodando.'}</div>`;
+            }
+            if (btn) { btn.disabled = false; btn.textContent = '⚡ Gerar relatório agora'; }
+        })
+        .catch(() => {
+            if (fb) fb.innerHTML = '<div class="alert alert-danger">Não foi possível conectar ao serviço. Verifique os containers.</div>';
+            if (btn) { btn.disabled = false; btn.textContent = '⚡ Gerar relatório agora'; }
+        });
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

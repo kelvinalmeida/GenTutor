@@ -4,338 +4,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Gateway - SEP_ML</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>SEP_IA — Painel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        body {
-            background-color: #f8f9fa;
+        body { background: #f0f2f5; font-family: system-ui, -apple-system, sans-serif; }
+
+        /* ── Navbar ── */
+        .top-nav {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .nav-logo {
+            font-weight: 800;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-logo i { -webkit-text-fill-color: #667eea; }
+
+        /* ── Hero ── */
+        .dashboard-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2.5rem 1.5rem 5.5rem;
+            color: white;
+        }
+        .hero-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            flex-shrink: 0;
         }
 
-        header {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        /* ── Action cards ── */
+        .action-card {
+            background: white;
+            border-radius: 16px;
+            border: none;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+            transition: transform 0.18s, box-shadow 0.18s;
+            text-decoration: none;
+            display: block;
+            overflow: hidden;
+        }
+        .action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 28px rgba(102,126,234,0.18);
+        }
+        .card-accent { height: 4px; }
+        .card-inner { padding: 1.5rem; }
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+        }
+        .card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.3rem;
+        }
+        .card-desc {
+            font-size: 0.82rem;
+            color: #6b7280;
+            line-height: 1.5;
+            margin: 0;
         }
 
-        .nav-buttons a {
-            min-width: 160px;
+        /* ── Floating content area ── */
+        .floating-section {
+            margin-top: -3.5rem;
         }
 
-        .welcome-message {
-            margin-top: 40px;
-            text-align: center;
+        /* ── Quick links ── */
+        .quick-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #667eea;
+            text-decoration: none;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: background 0.15s;
         }
-
-        h1,
-        h2 {
-            font-weight: 600;
-        }
+        .quick-link:hover { background: #ede9fe; color: #5b21b6; }
     </style>
 </head>
 
-<body class="d-flex flex-column min-vh-100">
+<body>
 
-    <!-- Topo com conteúdo -->
-    <header class="bg-primary text-white py-4">
-        <div class="container">
-            <div class="d-flex justify-content-between align-items-center">
-                <!-- Título -->
-                <div>
-                    <h1 class="mb-0">SEP_ML</h1>
-                    <small class="text-light">Sessões de ensino Personalizadas</small>
-                </div>
-
-                <!-- Botão de Login/Logout -->
-                <div>
-                    <a href="/perfil" class="btn btn-light">Perfil</a>
-                    {% if current_user %}
-                    <a href="/logout" class="btn btn-outline-light">Logout</a>
-                    {% else %}
-                    <a href="/login" class="btn btn-outline-light">Login</a>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Navegação -->
-            <div class="mt-4 nav-buttons d-flex flex-wrap justify-content-center gap-3">
-
-                <!-- Grupo: Usuários -->
-                <div class="dropdown">
-                    <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        Usuários
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/students">Ver Estudantes</a></li>
-                        <li><a class="dropdown-item" href="/teachers">Ver Professores</a></li>
-                    </ul>
-                </div>
-
-                <!-- Grupo: Sessão -->
-                <div class="dropdown">
-                    <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        Sessões
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/sessions">Ver Sessões</a></li>
-                        {% if current_user and current_user.type == 'teacher' %}
-                        <li><a class="dropdown-item" href="/sessions/create">Criar Sessão</a></li>
-                        {% endif %}
-                    </ul>
-                </div>
-
-                {% if current_user and current_user.type == 'teacher' %}
-
-                <!-- Grupo: Estratégias -->
-                <div class="dropdown">
-                    <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        Estratégias
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/strategies">Ver Estratégias</a></li>
-                        <li><a class="dropdown-item" href="/strategies/create">Criar Estratégia</a></li>
-                    </ul>
-                </div>
-
-                <!-- Grupo: Domínios -->
-                <div class="dropdown">
-                    <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        Domínios
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/domains">Ver Domínios</a></li>
-                        <li><a class="dropdown-item" href="/domains/create">Criar Domínio </a></li>
-
-                </div>
-                {% endif %}
-    </header>
-
-    <!-- Mensagem de boas-vindas -->
-    <div class="welcome-message container">
-        {% if current_user %}
-        <h2 class="text-primary">Bem-vindo(a), {{ current_user.username }}!</h2>
-        <p class="lead">Tipo de usuário: {{ current_user.type | capitalize }}</p>
-        {% endif %}
+<!-- Navbar -->
+<nav class="top-nav">
+    <span class="nav-logo">
+        <i class="bi bi-mortarboard-fill"></i>SEP_IA
+    </span>
+    {% if current_user %}
+    <div class="d-flex align-items-center gap-2">
+        <span class="fw-semibold d-none d-sm-inline" style="font-size:0.88rem;color:#374151;">
+            {{ current_user.username }}
+        </span>
+        <a href="/perfil" class="btn btn-sm rounded-pill px-3"
+           style="background:#ede9fe;color:#7c3aed;font-weight:600;border:none;font-size:0.82rem;">
+            <i class="bi bi-person-circle me-1"></i>Perfil
+        </a>
+        <a href="/logout" class="btn btn-sm rounded-pill px-3"
+           style="background:#fee2e2;color:#dc2626;font-weight:600;border:none;font-size:0.82rem;">
+            <i class="bi bi-box-arrow-right me-1"></i>Sair
+        </a>
     </div>
+    {% else %}
+    <a href="/login" class="btn btn-sm rounded-pill px-3"
+       style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;font-weight:600;font-size:0.82rem;">
+        <i class="bi bi-box-arrow-in-right me-1"></i>Login
+    </a>
+    {% endif %}
+</nav>
 
-    <!-- Parte de baixo vazia -->
-    <main class="flex-fill">
-        {% if current_user and current_user.type == 'student'%}
-        <div class="container mt-5 mb-5">
-            <div class="card shadow">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <h5 class="mb-0 me-2">Tutor Virtual (Worker User)</h5>
-                        <small>IA Pedagógica</small>
+<!-- Hero -->
+<div class="dashboard-hero">
+    <div class="d-flex align-items-center gap-3 mb-2">
+        <div class="hero-avatar">👨‍🏫</div>
+        <div>
+            <div style="font-size:0.8rem;opacity:0.8;">Professor</div>
+            <div class="fw-bold" style="font-size:1.25rem;">
+                Olá, {{ current_user.username if current_user else '' }}!
+            </div>
+        </div>
+    </div>
+    <p class="mb-0 mt-2" style="opacity:0.85;font-size:0.88rem;">
+        Gerencie suas sessões, estratégias e domínios de conhecimento.
+    </p>
+</div>
+
+<!-- Content -->
+<div class="container py-4 floating-section" style="max-width:1100px;">
+
+    <!-- Action cards -->
+    <div class="row g-4 mb-4">
+
+        <!-- Sessões -->
+        <div class="col-sm-6 col-lg-3">
+            <div class="action-card">
+                <div class="card-accent" style="background:linear-gradient(90deg,#667eea,#764ba2);"></div>
+                <div class="card-inner">
+                    <div class="card-icon" style="background:#ede9fe;color:#7c3aed;">
+                        <i class="bi bi-collection-play"></i>
                     </div>
-                    <button class="btn btn-sm btn-outline-light" onclick="clearChat()">Limpar Chat</button>
-                </div>
-                <div class="card-body" id="chat-box" style="height: 400px; overflow-y: auto; background-color: #e9ecef;">
-                    <!-- Mensagens -->
-                    <div class="text-center text-muted mt-5" id="chat-placeholder">
-                        <p class="mb-1">👋 Olá, {{ current_user.username }}!</p>
-                        <p>Sou seu tutor virtual. Posso analisar seu desempenho e tirar dúvidas sobre as aulas.</p>
-                        <p><small>Tente perguntar: "Como posso melhorar em Python?" ou "Me explique o último tópico."</small></p>
-                    </div>
-                </div>
-                <div class="card-footer bg-white">
-                    <div class="input-group">
-                        <input type="text" id="user-input" class="form-control" placeholder="Digite sua dúvida ou peça um conselho..." aria-label="Mensagem">
-                        <button class="btn btn-success" id="send-btn" onclick="sendMessage()">Enviar</button>
+                    <div class="card-title">Sessões</div>
+                    <p class="card-desc">Veja e gerencie suas sessões de ensino.</p>
+                    <div class="mt-2 d-flex gap-2 flex-wrap">
+                        <a href="/sessions" class="quick-link"><i class="bi bi-eye"></i>Ver todas</a>
+                        <a href="/sessions/create" class="quick-link"><i class="bi bi-plus-circle"></i>Criar</a>
                     </div>
                 </div>
             </div>
         </div>
-        {% endif %}
-    </main>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- Estratégias -->
+        <div class="col-sm-6 col-lg-3">
+            <div class="action-card">
+                <div class="card-accent" style="background:linear-gradient(90deg,#4facfe,#00f2fe);"></div>
+                <div class="card-inner">
+                    <div class="card-icon" style="background:#dbeafe;color:#2563eb;">
+                        <i class="bi bi-diagram-3"></i>
+                    </div>
+                    <div class="card-title">Estratégias</div>
+                    <p class="card-desc">Defina estratégias pedagógicas para suas turmas.</p>
+                    <div class="mt-2 d-flex gap-2 flex-wrap">
+                        <a href="/strategies" class="quick-link"><i class="bi bi-eye"></i>Ver todas</a>
+                        <a href="/strategies/create" class="quick-link"><i class="bi bi-plus-circle"></i>Criar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    {% if current_user %}
-    <script>
-        const chatBox = document.getElementById('chat-box');
-        const userInput = document.getElementById('user-input');
-        const sendBtn = document.getElementById('send-btn');
-        const placeholder = document.getElementById('chat-placeholder');
-        const COOLDOWN_TIME = 120000; // 1 minuto em ms
+        <!-- Domínios -->
+        <div class="col-sm-6 col-lg-3">
+            <div class="action-card">
+                <div class="card-accent" style="background:linear-gradient(90deg,#11998e,#38ef7d);"></div>
+                <div class="card-inner">
+                    <div class="card-icon" style="background:#dcfce7;color:#16a34a;">
+                        <i class="bi bi-book"></i>
+                    </div>
+                    <div class="card-title">Domínios</div>
+                    <p class="card-desc">Gerencie o conteúdo e materiais didáticos.</p>
+                    <div class="mt-2 d-flex gap-2 flex-wrap">
+                        <a href="/domains" class="quick-link"><i class="bi bi-eye"></i>Ver todos</a>
+                        <a href="/domains/create" class="quick-link"><i class="bi bi-plus-circle"></i>Criar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        userInput.addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
-                sendMessage();
-            }
-        });
+        <!-- Usuários -->
+        <div class="col-sm-6 col-lg-3">
+            <div class="action-card">
+                <div class="card-accent" style="background:linear-gradient(90deg,#f7971e,#ffd200);"></div>
+                <div class="card-inner">
+                    <div class="card-icon" style="background:#fef9c3;color:#ca8a04;">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <div class="card-title">Usuários</div>
+                    <p class="card-desc">Consulte alunos e professores cadastrados.</p>
+                    <div class="mt-2 d-flex gap-2 flex-wrap">
+                        <a href="/students" class="quick-link"><i class="bi bi-mortarboard"></i>Alunos</a>
+                        <a href="/teachers" class="quick-link"><i class="bi bi-person-workspace"></i>Professores</a>
+                    </div>
+                </div>
+            </a>
+        </div>
 
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', () => {
-            loadChatHistory();
-            checkCooldown();
-            setInterval(checkCooldown, 1000); // Verifica a cada segundo
-        });
+    </div>
 
-        function checkCooldown() {
-            const lastMsg = localStorage.getItem('lastMessageTime');
-            if (lastMsg) {
-                const diff = Date.now() - parseInt(lastMsg);
-                if (diff < COOLDOWN_TIME) {
-                    const remaining = Math.ceil((COOLDOWN_TIME - diff) / 1000);
-                    disableChat(true, `Aguarde ${remaining}s`);
-                    return true;
-                }
-            }
-            // Se não estiver enviando (loading), habilita
-            if (sendBtn.innerHTML.includes('spinner')) return true; // Mantém desabilitado se carregando
+    <!-- Info footer -->
+    <div class="text-center" style="color:#9ca3af;font-size:0.78rem;padding-bottom:2rem;">
+        SEP_IA — Sessões de Ensino Personalizadas &nbsp;·&nbsp; FA_PorT (Medeiros et al., 2006)
+    </div>
 
-            disableChat(false);
-            return false;
-        }
+</div>
 
-        function disableChat(disable, text) {
-            // Só altera se o estado for diferente para evitar flickers ou sobrescrever 'Enviando...'
-            if (disable) {
-                userInput.disabled = true;
-                sendBtn.disabled = true;
-                sendBtn.innerText = text;
-            } else {
-                if (userInput.disabled) userInput.disabled = false;
-                if (sendBtn.disabled) {
-                    sendBtn.disabled = false;
-                    sendBtn.innerText = 'Enviar';
-                }
-            }
-        }
-
-        async function loadChatHistory() {
-            try {
-                const response = await fetch('/orchestrator/student/chat_history');
-                if (response.ok) {
-                    const history = await response.json();
-                    if (Array.isArray(history) && history.length > 0) {
-                        if(placeholder) placeholder.style.display = 'none';
-                        history.forEach(msg => {
-                            appendMessage(msg.sender, msg.message);
-                        });
-                        // Scroll to bottom
-                        chatBox.scrollTop = chatBox.scrollHeight;
-                    }
-                }
-            } catch (e) {
-                console.error("Erro ao carregar histórico", e);
-            }
-        }
-
-        async function clearChat() {
-            if (!confirm("Tem certeza que deseja apagar todo o histórico?")) return;
-
-            try {
-                const response = await fetch('/orchestrator/student/chat_history', { method: 'DELETE' });
-                if (response.ok) {
-                    chatBox.innerHTML = '';
-                    location.reload();
-                } else {
-                    alert("Erro ao limpar chat.");
-                }
-            } catch (e) {
-                console.error(e);
-                alert("Erro ao limpar chat.");
-            }
-        }
-
-        async function sendMessage() {
-            // Verifica cooldown antes de tentar enviar
-            if (checkCooldown()) return;
-
-            const text = userInput.value.trim();
-            if (!text) return;
-
-            if(placeholder) placeholder.style.display = 'none';
-
-            // 1. Mensagem do Usuário
-            appendMessage('user', text);
-            userInput.value = '';
-            setLoading(true);
-
-            // Inicia Cooldown IMEDIATAMENTE após enviar (tentar)
-            localStorage.setItem('lastMessageTime', Date.now());
-            checkCooldown(); // Atualiza UI para desabilitado
-
-            const loadingId = appendMessage('system', 'Consultando seus dados e gerando resposta...');
-
-            try {
-                const response = await fetch('/orchestrator/student/ask_tutor', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: text })
-                });
-
-                const data = await response.json();
-                removeMessage(loadingId);
-
-                if (response.ok) {
-                    appendMessage('agent', data.response || "Sem resposta textual.");
-                } else {
-                    appendMessage('error', 'Erro: ' + (data.error || 'Falha.'));
-                }
-
-            } catch (error) {
-                removeMessage(loadingId);
-                appendMessage('error', 'Erro de conexão.');
-            } finally {
-                setLoading(false);
-                // O checkCooldown vai manter desabilitado se ainda estiver no tempo
-                checkCooldown();
-                if (!sendBtn.disabled) userInput.focus();
-            }
-        }
-
-        function setLoading(isLoading) {
-            userInput.disabled = isLoading;
-            sendBtn.disabled = isLoading;
-            if (isLoading) {
-                sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-            } else {
-                // O texto será restaurado pelo checkCooldown se disponível
-            }
-        }
-
-        function appendMessage(sender, text) {
-            const msgRow = document.createElement('div');
-            msgRow.className = 'd-flex mb-3 ' + (sender === 'user' ? 'justify-content-end' : 'justify-content-start');
-
-            let bubbleClass = 'bg-white text-dark border';
-            if (sender === 'user') bubbleClass = 'bg-primary text-white';
-            if (sender === 'agent') bubbleClass = 'bg-white text-dark shadow-sm border';
-            if (sender === 'system') bubbleClass = 'text-muted small fst-italic mx-auto';
-            if (sender === 'error') bubbleClass = 'bg-danger text-white';
-
-            const msgDiv = document.createElement('div');
-            if (sender === 'system') {
-                msgDiv.className = bubbleClass;
-                msgDiv.innerText = text;
-            } else {
-                msgDiv.className = `p-3 rounded-3 ${bubbleClass}`;
-                msgDiv.style.maxWidth = '75%';
-                msgDiv.style.whiteSpace = 'pre-wrap';
-
-                if (sender === 'agent') {
-                    msgDiv.innerHTML = '<strong>🤖 Tutor:</strong><br>' + text;
-                } else if (sender === 'error') {
-                     msgDiv.innerHTML = '<strong>⚠️ Erro:</strong><br>' + text;
-                } else {
-                    msgDiv.innerText = text;
-                }
-            }
-
-            msgRow.id = 'msg-' + Date.now() + Math.random();
-            msgRow.appendChild(msgDiv);
-            chatBox.appendChild(msgRow);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            return msgRow.id;
-        }
-
-        function removeMessage(id) {
-            const el = document.getElementById(id);
-            if (el) el.remove();
-        }
-    </script>
-    {% endif %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
 </html>

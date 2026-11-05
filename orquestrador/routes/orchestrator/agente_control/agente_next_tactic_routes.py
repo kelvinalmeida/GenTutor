@@ -241,22 +241,6 @@ def _decide_via_ai(student_id, session_id, session_data, student_ids, strategy_t
     except Exception as e:
         logging.warning("Erro ao buscar histórico student_id=%s: %s", student_id, e)
 
-    # Maestria por conceito
-    student_mastery_text = ""
-    try:
-        mastery_resp = requests.get(
-            f"{USER_URL}/students/{student_id}/mastery",
-            params={"session_id": session_id},
-            timeout=10
-        )
-        if mastery_resp.status_code == 200:
-            mastery_list = mastery_resp.json().get('mastery', [])
-            if mastery_list:
-                lines = [f"- {m['concept']}: {m['mastery_pct']}%" for m in mastery_list]
-                student_mastery_text = "\n".join(lines)
-    except Exception as e:
-        logging.warning("Erro ao buscar maestria student_id=%s: %s", student_id, e)
-
     remaining_tactics = [
         {"index": i, "name": strategy_tactics[i].get('name', ''), "description": strategy_tactics[i].get('description', '')}
         for i in remaining_indices
@@ -270,7 +254,6 @@ def _decide_via_ai(student_id, session_id, session_data, student_ids, strategy_t
         "executed_tactic_indices": executed_tactic_indices,
         "chat_messages": last_5_messages,
         "student_history": student_history,
-        "student_mastery": student_mastery_text
     }
 
     logging.info("Sem plano — chamando IA (legado): student_id=%s", student_id)

@@ -19,9 +19,22 @@ def create_student():
 
     if request.method == "POST":
         try:
-            # Garante que o request tem JSON antes de acessar
             if not request.is_json:
                 return jsonify({"error": "Content-Type must be application/json"}), 415
+
+            # Migração automática das colunas de TCLE
+            for col_def in [
+                "tcle_data_aceite TIMESTAMP",
+                "tcle_ip VARCHAR(60)",
+                "tcle_user_agent TEXT",
+                "tcle_versao VARCHAR(20)",
+            ]:
+                col_name = col_def.split()[0]
+                try:
+                    cursor.execute(f"ALTER TABLE student ADD COLUMN IF NOT EXISTS {col_def};")
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
 
             name = request.json.get("name")
             age = request.json.get("age")
@@ -30,25 +43,27 @@ def create_student():
             email = request.json.get("email")
             username = request.json.get("username")
             password = request.json.get("password")
-
-            # --- NOVOS CAMPOS ---
             pref_content_type = request.json.get("pref_content_type")
             pref_communication = request.json.get("pref_communication")
             pref_receive_email = request.json.get("pref_receive_email")
-            
-            # Atualiza a Query SQL para incluir as 3 novas colunas
+            tcle_data_aceite = request.json.get("tcle_data_aceite")
+            tcle_ip = request.json.get("tcle_ip")
+            tcle_user_agent = request.json.get("tcle_user_agent")
+            tcle_versao = request.json.get("tcle_versao", "1.0")
+
             add_student_query = """
                 INSERT INTO student (
                     name, age, course, type, email, username, password_hash,
-                    pref_content_type, pref_communication, pref_receive_email
+                    pref_content_type, pref_communication, pref_receive_email,
+                    tcle_data_aceite, tcle_ip, tcle_user_agent, tcle_versao
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
             """
-            
-            # Atualiza a tupla de parâmetros com os novos valores no final
+
             cursor.execute(add_student_query, (
                 name, age, course, type, email, username, password,
-                pref_content_type, pref_communication, pref_receive_email
+                pref_content_type, pref_communication, pref_receive_email,
+                tcle_data_aceite, tcle_ip, tcle_user_agent, tcle_versao
             ))
             
             conn.commit()
@@ -111,6 +126,26 @@ def get_students():
 
     # return jsonify([{"id": s.id, "name": s.name, "age": s.age, "course": s.course, "type": s.type, "username": s.username, "password": s.password_hash} for s in students])
 
+@student_bp.route("/students/<int:student_id>/contact", methods=["GET"])
+def get_student_contact(student_id):
+    """Retorna nome e email do aluno para uso interno (notificações ao professor)."""
+    conn = create_connection(current_app.config['SQLALCHEMY_DATABASE_URI'])
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 503
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT name, email FROM student WHERE student_id = %s;", (student_id,))
+        row = cursor.fetchone()
+        if row:
+            return jsonify({"name": row["name"], "email": row["email"]}), 200
+        return jsonify({"error": "Aluno não encontrado"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @student_bp.route("/students/<int:student_id>", methods=["GET"])
 def get_student_by_id(student_id):
     conn = create_connection(current_app.config['SQLALCHEMY_DATABASE_URI'])
@@ -121,7 +156,9 @@ def get_student_by_id(student_id):
     cursor = conn.cursor()
 
     try:
-        get_student_query = "SELECT student_id id, name, age, course, type, username, password_hash password FROM student WHERE student_id = %s;"
+        get_student_query = """SELECT student_id id, name, age, course, type, username,
+                                     email, pref_content_type, pref_communication, pref_receive_email
+                              FROM student WHERE student_id = %s;"""
         cursor.execute(get_student_query, (student_id,))
         row = cursor.fetchone()
 
@@ -153,12 +190,20 @@ def update_student(student_id):
         name = request.json.get("name")
         age = request.json.get("age")
         course = request.json.get("course")
+        email = request.json.get("email")
+        pref_content_type = request.json.get("pref_content_type")
+        pref_communication = request.json.get("pref_communication")
+        pref_receive_email = request.json.get("pref_receive_email")
 
-        update_student_query = """UPDATE student 
-                                  SET name = %s, age = %s, course = %s 
+        update_student_query = """UPDATE student
+                                  SET name = %s, age = %s, course = %s,
+                                      email = %s, pref_content_type = %s,
+                                      pref_communication = %s, pref_receive_email = %s
                                   WHERE student_id = %s;"""
-        
-        cursor.execute(update_student_query, (name, age, course, student_id))
+
+        cursor.execute(update_student_query, (name, age, course, email,
+                                              pref_content_type, pref_communication,
+                                              pref_receive_email, student_id))
         conn.commit()
 
         cursor.close()

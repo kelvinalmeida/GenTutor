@@ -37,16 +37,18 @@ def create_strategy():
         # Insert tactics
         if raw_tatics:
             query_tactic = """
-                INSERT INTO tactics (name, description, time, chat_id, strategy_id)
-                VALUES (%s, %s, %s, %s, %s);
+                INSERT INTO tactics (name, description, time, chat_id, strategy_id, domain_id)
+                VALUES (%s, %s, %s, %s, %s, %s);
             """
             for tatic in raw_tatics:
+                domain_id_val = tatic.get("domain_id")
                 cursor.execute(query_tactic, (
                     tatic.get("name"),
                     tatic.get("description"),
                     tatic.get("time"),
                     tatic.get("chat_id"),
-                    strategy_id
+                    strategy_id,
+                    int(domain_id_val) if domain_id_val else None
                 ))
         
         conn.commit()
@@ -86,7 +88,7 @@ def list_strategies():
         # Popula tatics para cada estratégia
         # (N+1 query, mas mantém simplicidade com psycopg2 raw)
         for s in strategies:
-            cursor.execute("SELECT id, name, description, time, chat_id FROM tactics WHERE strategy_id = %s", (s['id'],))
+            cursor.execute("SELECT id, name, description, time, chat_id, domain_id FROM tactics WHERE strategy_id = %s", (s['id'],))
             s['tatics'] = cursor.fetchall()
 
         cursor.close()
@@ -122,7 +124,7 @@ def strategy_by_id(strategy_id):
         strategy = cursor.fetchone()
 
         if strategy:
-            cursor.execute("SELECT id, name, description, time, chat_id FROM tactics WHERE strategy_id = %s", (strategy['id'],))
+            cursor.execute("SELECT id, name, description, time, chat_id, domain_id FROM tactics WHERE strategy_id = %s", (strategy['id'],))
             strategy['tatics'] = cursor.fetchall()
 
             cursor.close()
@@ -135,6 +137,51 @@ def strategy_by_id(strategy_id):
 
     except Exception as e:
         if conn:
+            conn.close()
+        return jsonify({"error": str(e)}), 400
+
+
+@strategies_bp.route('/strategies/<int:strategy_id>', methods=['PUT'])
+def update_strategy(strategy_id):
+    conn = create_connection(current_app.config['SQLALCHEMY_DATABASE_URI'])
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 503
+    cursor = conn.cursor()
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        score = data.get('score', 0)
+        tatics = data.get('tatics', [])
+
+        cursor.execute("UPDATE strategies SET name = %s, score = %s WHERE id = %s", (name, score, strategy_id))
+        cursor.execute("DELETE FROM tactics WHERE strategy_id = %s", (strategy_id,))
+
+        if tatics:
+            query_tactic = """
+                INSERT INTO tactics (name, description, time, chat_id, strategy_id, domain_id)
+                VALUES (%s, %s, %s, %s, %s, %s);
+            """
+            for tatic in tatics:
+                domain_id_val = tatic.get("domain_id")
+                chat_id_val = tatic.get("chat_id")
+                cursor.execute(query_tactic, (
+                    tatic.get("name"),
+                    tatic.get("description"),
+                    tatic.get("time"),
+                    int(chat_id_val) if chat_id_val else None,
+                    strategy_id,
+                    int(domain_id_val) if domain_id_val else None
+                ))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": "Strategy updated!"}), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            cursor.close()
             conn.close()
         return jsonify({"error": str(e)}), 400
 
@@ -447,7 +494,7 @@ def ids_to_names():
              return jsonify({"error": "No strategies found"}), 404
 
         for s in strategies:
-            cursor.execute("SELECT id, name, description, time, chat_id FROM tactics WHERE strategy_id = %s", (s['id'],))
+            cursor.execute("SELECT id, name, description, time, chat_id, domain_id FROM tactics WHERE strategy_id = %s", (s['id'],))
             s['tatics'] = cursor.fetchall()
 
         # Monta o resultado no formato exato que você pediu.

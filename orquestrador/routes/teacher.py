@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from requests.exceptions import RequestException
+from datetime import datetime, timezone, timedelta
 
+BRT = timezone(timedelta(hours=-3))
 import requests
 from .auth import token_required
 from .services_routs import USER_URL
@@ -10,6 +12,9 @@ teacher_bp = Blueprint("teacher", __name__)
 @teacher_bp.route('/teachers/create', methods=['POST', 'GET'])
 def create_teacher():
     if request.method == 'POST':
+        if request.form.get('tcle_aceito') != 'sim':
+            return render_template("./user/create_teacher.html", error_tcle="Você deve aceitar o TCLE para realizar o cadastro.")
+
         # Get the form data
         name = request.form["name"]
         age = request.form["age"]
@@ -18,7 +23,18 @@ def create_teacher():
         username = request.form["username"]
         password = request.form["password"]
 
-        teacher = {"name": name, "age": age, "type": type, 'email': email, "username": username, "password": password}
+        teacher = {
+            "name": name,
+            "age": age,
+            "type": type,
+            "email": email,
+            "username": username,
+            "password": password,
+            "tcle_data_aceite": datetime.now(BRT).isoformat(),
+            "tcle_ip": request.remote_addr,
+            "tcle_user_agent": request.headers.get("User-Agent", ""),
+            "tcle_versao": "1.0",
+        }
         
         try:
             # Requisições

@@ -3,199 +3,325 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Criar Sessão</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <!-- Bootstrap 5 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Sessão — SEP_IA</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        .selectable-card input[type="checkbox"] {
-            display: none;
+        body { background: #f0f2f5; font-family: system-ui, -apple-system, sans-serif; }
+
+        /* ── Hero ── */
+        .page-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2.5rem 1.5rem 5rem;
+            color: white;
+            text-align: center;
+            position: relative;
         }
+        .hero-avatar {
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.5);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem;
+            margin: 0 auto 1rem;
+        }
+        .btn-back {
+            font-size: 0.82rem; color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            position: absolute; top: 1rem; left: 1.25rem;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .btn-back:hover { color: white; }
+
+        /* ── Main card ── */
+        .main-card {
+            margin-top: -3rem;
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.11);
+            background: white;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Section label ── */
+        .section-label {
+            font-size: 0.68rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.9px;
+            color: #9ca3af;
+            display: flex; align-items: center; gap: 6px;
+            margin-bottom: 1rem;
+        }
+        .section-block {
+            border: 1.5px solid #f3f4f6;
+            border-radius: 14px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            background: #fafafa;
+        }
+        .section-divider { border: none; border-top: 1px solid #f3f4f6; margin: 1.5rem 0; }
+
+        /* ── Selectable cards ── */
+        .selectable-card input[type="checkbox"] { display: none; }
 
         .selectable-card label {
             cursor: pointer;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-            border-radius: 0.5rem;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 12px;
             padding: 1rem;
             display: block;
             height: 100%;
+            background: white;
+            transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
         }
-
-        .selectable-card input[type="checkbox"]:checked+label {
-            border-color: #0d6efd;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        }
-
-        /* Cores diferentes por categoria */
-        .estrategia {
-            background-color: #e8f5e9;
-            /* verde claro */
-        }
-
-        .domain {
-            background-color: #f3f5d5;
-            /* exemplo: verde-amarelado claro */
-        }
-
-        .professor {
-            background-color: #e3f2fd;
-            /* azul claro */
-        }
-
-        .estudante {
-            background-color: #fff3cd;
-            /* amarelo claro */
-        }
-
         .selectable-card label:hover {
-            filter: brightness(0.95);
+            border-color: #a78bfa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.12);
+        }
+        .selectable-card input[type="checkbox"]:checked + label {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.18);
+            background: #f5f3ff;
         }
 
-        .section-title {
-            margin-bottom: 1rem;
-            font-weight: 600;
+        /* ── Strategy card specifics ── */
+        .strategy-name {
+            font-size: 0.95rem; font-weight: 700; color: #374151;
+            margin-bottom: 0.6rem;
         }
+        .tactic-chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: #ede9fe; color: #7c3aed;
+            border-radius: 20px; padding: 2px 10px;
+            font-size: 0.74rem; font-weight: 600;
+            margin: 2px;
+        }
+        .tactic-time {
+            font-size: 0.68rem; color: #9ca3af;
+            background: #f3f4f6; border-radius: 20px;
+            padding: 1px 7px; margin-left: 3px;
+        }
+
+        /* ── Person card ── */
+        .person-avatar {
+            width: 38px; height: 38px; border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; font-size: 1rem;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 0.5rem;
+            flex-shrink: 0;
+        }
+        .person-name {
+            font-size: 0.85rem; font-weight: 600; color: #374151;
+            text-align: center;
+        }
+
+        /* ── Empty state ── */
+        .empty-state {
+            color: #9ca3af; font-size: 0.85rem;
+            text-align: center; padding: 1rem 0;
+        }
+
+        /* ── Submit button ── */
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border: none; border-radius: 12px;
+            padding: 0.8rem 2rem; font-weight: 600; font-size: 0.97rem;
+            transition: opacity 0.18s, transform 0.15s;
+            width: 100%;
+        }
+        .btn-submit:hover { opacity: 0.88; transform: translateY(-1px); color: white; }
+
+        /* ── Show more button ── */
+        .btn-show-more {
+            display: inline-flex; align-items: center; gap: 5px;
+            border: 1.5px solid #667eea; color: #667eea; background: white;
+            border-radius: 20px; padding: 0.4rem 1.1rem;
+            font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; transition: background 0.15s;
+        }
+        .btn-show-more:hover { background: #f5f3ff; }
+        .btn-show-more.expanded i { transform: rotate(180deg); }
+        .btn-show-more i { transition: transform 0.2s; }
+
+        /* ── Selected counter badge ── */
+        .count-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 20px; height: 20px;
+            background: #667eea; color: white;
+            border-radius: 10px; font-size: 0.68rem; font-weight: 700;
+            padding: 0 6px;
+            margin-left: 6px;
+            transition: opacity 0.15s;
+        }
+        .count-badge.zero { opacity: 0; }
     </style>
 </head>
 
+<body>
 
-<body class="bg-light">
-    <div class="container my-5">
-        <div class="bg-white p-5 rounded shadow-sm">
-            <div class="position-relative mb-4">
-                <!-- Botão Voltar à esquerda -->
-                <a href="/" class="btn btn-outline-primary position-absolute start-0 top-50 translate-middle-y">
-                    ← Voltar
-                </a>
+<!-- Hero -->
+<div class="page-hero">
+    <a href="/sessions" class="btn-back"><i class="bi bi-arrow-left"></i>Voltar para Sessões</a>
+    <div class="hero-avatar"><i class="bi bi-collection-play-fill"></i></div>
+    <h2 class="fw-bold mb-1" style="font-size:1.5rem;">Criar Sessão</h2>
+    <p style="font-size:0.88rem;opacity:0.85;margin:0;">Selecione estratégias, professores e estudantes para a nova sessão.</p>
+</div>
 
-                <!-- Título centralizado -->
-                <h3 class="text-center">Criar Sessão</h3>
+<div class="container py-4" style="max-width:860px;">
+<div class="main-card p-4">
+
+    <form method="POST" id="create-form">
+
+        <!-- Estratégias -->
+        <p class="section-label"><i class="bi bi-diagram-3"></i>Estratégias <span class="count-badge zero" id="badge-strategies">0</span></p>
+        <div class="section-block">
+            {% if strategies %}
+            <div class="row g-3" id="grid-strategies">
+                {% for strategy in strategies %}
+                <div class="col-md-6 selectable-card{% if loop.index > 4 %} extra-item extra-strategies d-none{% endif %}">
+                    <input type="checkbox" name="strategies" value="{{ strategy.id }}"
+                           id="strategy-{{ strategy.id }}"
+                           onchange="updateBadge('strategies')">
+                    <label for="strategy-{{ strategy.id }}">
+                        <div class="d-flex align-items-start gap-2 mb-2">
+                            <div style="width:30px;height:30px;border-radius:8px;
+                                        background:linear-gradient(135deg,#667eea,#764ba2);
+                                        color:white;display:flex;align-items:center;
+                                        justify-content:center;font-size:0.85rem;flex-shrink:0;">
+                                <i class="bi bi-diagram-3-fill"></i>
+                            </div>
+                            <div class="strategy-name">{{ strategy.name }}</div>
+                        </div>
+                        <div>
+                            {% for tatic in strategy.tatics %}
+                            <span class="tactic-chip">
+                                {{ tatic.name }}<span class="tactic-time">{{ tatic.time }} min</span>
+                            </span>
+                            {% endfor %}
+                            {% if not strategy.tatics %}
+                            <em style="font-size:0.78rem;color:#9ca3af;">Sem táticas</em>
+                            {% endif %}
+                        </div>
+                    </label>
+                </div>
+                {% endfor %}
             </div>
-
-
-            <form method="POST">
-
-                <!-- Domínios -->
-                <div class="mb-5">
-                    <div class="section-title">Selecione o(s) Domínio(s)</div>
-                    <div class="row g-3">
-                        {% for domain in domains %}
-                        <div class="col-md-4 selectable-card ">
-                            <input type="checkbox" name="domains" value="{{ domain.id }}" id="domain-{{ domain.id }}">
-                            <label for="domain-{{ domain.id }}" class="card domain h-100">
-                                <div class="card-body ">
-                                    <!-- Nome do Domínio -->
-                                    <div class="text-center mb-3">
-                                        <h5 class="card-title text-success">{{ domain.name }}</h5>
-                                    </div>
-
-                                    <!-- Lista de PDFs -->
-                                    <div>
-                                        <h6 class="text-muted mb-2">PDFs:</h6>
-                                        <ul class="list-group list-group-flush">
-                                            {% for pdf in domain.pdfs %}
-                                            <li class="list-group-item">
-                                                <i class="bi bi-file-earmark-text me-2"></i>{{ pdf.filename }}
-                                            </li>
-                                            {% endfor %}
-                                            {% if not domain.pdfs %}
-                                            <li class="list-group-item">
-                                                <i class="bi bi-file-earmark-text me-2"></i>Nenhum PDF disponível
-                                            </li>
-                                            {% endif %}
-                                        </ul>
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- Estratégias -->
-                <div class="mb-5">
-                    <div class="section-title">Selecione as Estratégias</div>
-                    <div class="row g-3">
-                        {% for strategy in strategies %}
-                        <div class="col-md-4 selectable-card">
-                            <input type="checkbox" name="strategies" value="{{ strategy.id }}"
-                                id="strategy-{{ strategy.id }}">
-                            <label for="strategy-{{ strategy.id }}" class="card estrategia h-100">
-                                <div class="card-body">
-                                    <!-- Nome da Estratégia -->
-                                    <div class="text-center mb-3">
-                                        <h5 class="card-title text-primary">{{ strategy.name }}</h5>
-                                    </div>
-
-                                    <!-- Seção de Táticas -->
-                                    <div>
-                                        <h6 class="text-muted mb-2">Táticas:</h6>
-                                        <ul class="list-group list-group-flush">
-                                            {% for tatic in strategy.tatics %}
-                                            <li
-                                                class="list-group-item d-flex justify-content-between align-items-center">
-                                                {{ tatic.name }}
-                                                <span class="badge bg-primary rounded-pill">{{ tatic.time }} min</span>
-                                            </li>
-                                            {% endfor %}
-                                        </ul>
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- Professores -->
-                <div class="mb-5">
-                    <div class="section-title">Selecione os Professores</div>
-                    <div class="row g-3">
-                        {% for teacher in teachers %}
-                        <div class="col-md-3 selectable-card">
-                            <input type="checkbox" name="teachers" value="{{ teacher.id }}"
-                                id="teacher-{{ teacher.id }}">
-                            <label for="teacher-{{ teacher.id }}" class="card professor h-100">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title mb-0">{{ teacher.name }}</h6>
-                                </div>
-                            </label>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- Estudantes -->
-                <div class="mb-4">
-                    <div class="section-title">Selecione os Estudantes</div>
-                    <div class="row g-3">
-                        {% for student in students %}
-                        <div class="col-md-3 selectable-card">
-                            <input type="checkbox" name="students" value="{{ student.id }}"
-                                id="student-{{ student.id }}">
-                            <label for="student-{{ student.id }}" class="card estudante h-100">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title mb-0">{{ student.name }}</h6>
-                                </div>
-                            </label>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- Botão -->
-                <button type="submit" class="btn btn-primary w-100 mt-4">Criar Sessão</button>
-            </form>
+            {% if strategies|length > 4 %}
+            <div class="text-center mt-3">
+                <button type="button" class="btn-show-more" onclick="toggleExtra('strategies', this)">
+                    <i class="bi bi-chevron-down me-1"></i>Ver mais {{ strategies|length - 4 }} estratégia{{ 's' if strategies|length - 4 != 1 else '' }}
+                </button>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="empty-state"><i class="bi bi-diagram-3 me-2"></i>Nenhuma estratégia cadastrada.</div>
+            {% endif %}
         </div>
-    </div>
 
+        <hr class="section-divider">
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- Professores -->
+        <p class="section-label"><i class="bi bi-person-workspace"></i>Professores <span class="count-badge zero" id="badge-teachers">0</span></p>
+        <div class="section-block">
+            {% if teachers %}
+            <div class="row g-2" id="grid-teachers">
+                {% for teacher in teachers %}
+                <div class="col-6 col-sm-4 col-md-3 selectable-card{% if loop.index > 4 %} extra-item extra-teachers d-none{% endif %}">
+                    <input type="checkbox" name="teachers" value="{{ teacher.id }}"
+                           id="teacher-{{ teacher.id }}"
+                           onchange="updateBadge('teachers')">
+                    <label for="teacher-{{ teacher.id }}" class="text-center py-3">
+                        <div class="person-avatar" style="background:linear-gradient(135deg,#10b981,#059669);">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <div class="person-name">{{ teacher.name }}</div>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            {% if teachers|length > 4 %}
+            <div class="text-center mt-3">
+                <button type="button" class="btn-show-more" onclick="toggleExtra('teachers', this)">
+                    <i class="bi bi-chevron-down me-1"></i>Ver mais {{ teachers|length - 4 }} professor{{ 'es' if teachers|length - 4 != 1 else '' }}
+                </button>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="empty-state"><i class="bi bi-person-workspace me-2"></i>Nenhum professor cadastrado.</div>
+            {% endif %}
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Estudantes -->
+        <p class="section-label"><i class="bi bi-people"></i>Estudantes <span class="count-badge zero" id="badge-students">0</span></p>
+        <div class="section-block">
+            {% if students %}
+            <div class="row g-2" id="grid-students">
+                {% for student in students %}
+                <div class="col-6 col-sm-4 col-md-3 selectable-card{% if loop.index > 4 %} extra-item extra-students d-none{% endif %}">
+                    <input type="checkbox" name="students" value="{{ student.id }}"
+                           id="student-{{ student.id }}"
+                           onchange="updateBadge('students')">
+                    <label for="student-{{ student.id }}" class="text-center py-3">
+                        <div class="person-avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <div class="person-name">{{ student.name }}</div>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            {% if students|length > 4 %}
+            <div class="text-center mt-3">
+                <button type="button" class="btn-show-more" onclick="toggleExtra('students', this)">
+                    <i class="bi bi-chevron-down me-1"></i>Ver mais {{ students|length - 4 }} estudante{{ 's' if students|length - 4 != 1 else '' }}
+                </button>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="empty-state"><i class="bi bi-people me-2"></i>Nenhum estudante cadastrado.</div>
+            {% endif %}
+        </div>
+
+        <!-- Submit -->
+        <div class="mt-2">
+            <button type="submit" class="btn-submit">
+                <i class="bi bi-check-circle-fill me-2"></i>Criar Sessão
+            </button>
+        </div>
+
+    </form>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function updateBadge(name) {
+        const count = document.querySelectorAll(`input[name="${name}"]:checked`).length;
+        const badge = document.getElementById(`badge-${name}`);
+        badge.textContent = count;
+        badge.classList.toggle('zero', count === 0);
+    }
+
+    function toggleExtra(group, btn) {
+        const expanded = btn.classList.toggle('expanded');
+        document.querySelectorAll(`.extra-${group}`).forEach(el => {
+            el.classList.toggle('d-none', !expanded);
+        });
+        const hidden = document.querySelectorAll(`.extra-${group}`).length;
+        if (expanded) {
+            btn.innerHTML = '<i class="bi bi-chevron-down me-1"></i>Ver menos';
+        } else {
+            const labels = { strategies: 'estratégia', teachers: 'professor', students: 'estudante' };
+            const suffix = hidden !== 1 ? (group === 'teachers' ? 'es' : 's') : '';
+            btn.innerHTML = `<i class="bi bi-chevron-down me-1"></i>Ver mais ${hidden} ${labels[group]}${suffix}`;
+        }
+    }
+</script>
 </body>
-
 </html>

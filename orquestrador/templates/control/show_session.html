@@ -1,39 +1,113 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Session Details</title>
+    <title>Sessão #{{ session.id }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
+        /* ── Base ── */
+        body { background: #f0f2f5; }
+
+        /* ── Navbar ── */
+        .top-nav {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+
+        /* ── Hero ── */
+        .session-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem 1.5rem 5rem;
+            color: white;
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .status-in-progress { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); }
+        .status-finished     { background: rgba(253,224,71,0.25); color: #fef08a; border: 1px solid rgba(253,224,71,0.4); }
+        .status-pending      { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.25); }
+
+        /* ── Content card ── */
+        .content-card {
+            margin-top: -3rem;
+            border-radius: 16px;
+            border: none;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+            background: white;
+        }
+
+        /* ── Section label ── */
+        .section-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.9px;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 1rem;
+        }
+        .section-divider {
+            border: none;
+            border-top: 1px solid #f3f4f6;
+            margin: 1.75rem 0;
+        }
+
+        /* ── Session code box ── */
+        .code-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 12px;
+            padding: 8px 16px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        /* ── Timer (preserving JS hook) ── */
         #tacticTimer {
             font-size: 3rem;
             padding: 1rem 2rem;
+            background: linear-gradient(135deg,#667eea,#764ba2) !important;
+            border: none !important;
+            border-radius: 16px !important;
+            color: white !important;
+            box-shadow: 0 6px 20px rgba(102,126,234,0.35);
+        }
+        #tacticName { font-size: 1.5rem; }
+
+        /* ── Tactic description ── */
+        #current_tatic_description {
+            background: linear-gradient(135deg,#f8f9ff,#f3f0ff);
+            border-left: 4px solid #667eea !important;
+            border-radius: 10px;
+            color: #4b5563;
         }
 
-        #tacticName {
-            font-size: 1.5rem;
-        }
-
-        .centered-controls {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .badge-large {
-            font-size: 1.2rem;
-            padding: 0.6rem 1rem;
-        }
-
-        .session-code {
-            font-size: 1.2rem;
-        }
-        
+        /* ── AI wrapper (keep class for JS) ── */
         .ai-wrapper {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); /* Degradê Azul Ciano Brilhante */
-            /* Opção alternativa (Roxo/Azul): background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
             border-radius: 15px;
             padding: 15px 25px;
             box-shadow: 0 10px 20px rgba(0, 198, 255, 0.3);
@@ -45,11 +119,7 @@
             border: 1px solid rgba(255, 255, 255, 0.4);
             transition: transform 0.2s ease;
         }
-
-        .ai-wrapper:hover {
-            transform: translateY(-2px);
-        }
-
+        .ai-wrapper:hover { transform: translateY(-2px); }
         .ai-label {
             color: white;
             font-weight: bold;
@@ -59,9 +129,8 @@
             gap: 8px;
             text-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
-
         .ai-icon-bg {
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(255,255,255,0.25);
             border-radius: 50%;
             width: 35px;
             height: 35px;
@@ -70,8 +139,6 @@
             justify-content: center;
             font-size: 1.2rem;
         }
-
-        /* Switch Customizado */
         .form-check-input.ai-switch {
             width: 3rem;
             height: 1.5rem;
@@ -79,20 +146,20 @@
             border: 2px solid rgba(255,255,255,0.6);
             cursor: pointer;
         }
-        
         .form-check-input.ai-switch:checked {
             background-color: #fff;
             border-color: #fff;
             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%2300f2fe'/%3e%3c/svg%3e");
         }
-
-        .form-check-input.ai-switch:focus {
-            box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.25);
+        .form-check-input.ai-switch:focus,
+        .form-check-input.ai-switch:focus-visible {
+            box-shadow: none;
+            outline: none;
         }
 
-        /* --- Estilo do Spinner de Pensamento --- */
+        /* ── Agent UI (keep classes for JS) ── */
         .agent-thinking-container {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255,255,255,0.9);
             border-left: 4px solid #4facfe;
             padding: 20px;
             border-radius: 8px;
@@ -104,29 +171,20 @@
             gap: 15px;
             animation: fadeIn 0.5s ease;
         }
-
-        .pulsing-brain {
-            font-size: 2rem;
-            color: #4facfe;
-            animation: pulse-animation 1.5s infinite;
-        }
-
+        .pulsing-brain { font-size: 2rem; color: #4facfe; animation: pulse-animation 1.5s infinite; }
         @keyframes pulse-animation {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.7; }
-            100% { transform: scale(1); opacity: 1; }
+            0%   { transform: scale(1);   opacity: 1; }
+            50%  { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1);   opacity: 1; }
         }
-
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-
-        /* --- Estilo da Caixa de Raciocínio (Resultado) --- */
         .agent-reasoning-card {
             background: #ffffff;
             border: 1px solid #e1e4e8;
-            border-top: 4px solid #764ba2; /* Roxo para diferenciar */
+            border-top: 4px solid #764ba2;
             border-radius: 10px;
             padding: 20px;
             margin: 20px auto;
@@ -135,7 +193,6 @@
             text-align: left;
             position: relative;
         }
-
         .reasoning-header {
             display: flex;
             align-items: center;
@@ -145,548 +202,972 @@
             font-weight: bold;
             font-size: 1.1rem;
         }
+        .reasoning-content { font-size: 1.05rem; color: #4a5568; line-height: 1.6; }
 
-        .reasoning-content {
-            font-size: 1.05rem;
-            color: #4a5568;
-            line-height: 1.6;
+        /* ── Plans (keep for JS) ── */
+        .plan-card {
+            border-top: 4px solid #4facfe;
+            border-radius: 10px;
+            animation: fadeIn 0.5s ease;
+            transition: box-shadow 0.2s;
+        }
+        .plan-card:hover { box-shadow: 0 6px 20px rgba(79,172,254,0.18) !important; }
+        .plan-goal-box {
+            background: linear-gradient(135deg, #f0fff4, #e8f4ff);
+            border-left: 4px solid #43e97b;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+        }
+        .plan-tactic-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+        .plan-tactic-row .tactic-num {
+            min-width: 26px; height: 26px; border-radius: 50%;
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white; font-size: 0.78rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+
+        /* ── Tactics table ── */
+        .tactics-table { border-radius: 10px; overflow: hidden; }
+        .tactics-table th {
+            background: #f8f9ff;
+            color: #6b7280;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            border-color: #f0f0f0;
+        }
+        .tactics-table td { border-color: #f0f0f0; vertical-align: middle; font-size: 0.9rem; }
+        .tactic-name-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #ede9fe;
+            color: #7c3aed;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        /* ── Rating stars ── */
+        #star-rating i { transition: transform 0.1s; }
+        #star-rating i:hover { transform: scale(1.2); }
+
+        /* ── Extra notes form ── */
+        .note-form .form-control {
+            border-radius: 10px;
+            border: 1.5px solid #e5e7eb;
+        }
+        .note-form .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
+
+        /* ── Buttons ── */
+        .btn-hero-primary {
+            background: linear-gradient(135deg,#667eea,#764ba2);
+            color: white; border: none; border-radius: 50px;
+            font-weight: 700; padding: 0.85rem 2.5rem;
+            box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+            transition: opacity .2s, transform .15s;
+        }
+        .btn-hero-primary:hover { opacity: 0.9; transform: translateY(-1px); color: white; }
+        .btn-hero-primary:disabled { opacity: 0.55; transform: none; }
+
+        /* ── Teacher alerts (fixed, keep for JS) ── */
+        #teacher-alerts-btn {
+            position: fixed; top: 72px; right: 20px; z-index: 1050;
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border: none; color: white; font-size: 1.2rem;
+            box-shadow: 0 4px 12px rgba(245,158,11,0.4);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
+        }
+        #teacher-alerts-btn:hover { transform: scale(1.08); }
+        #alerts-badge {
+            position: absolute; top: -4px; right: -4px;
+            background: #dc2626; color: white; border-radius: 50%;
+            width: 20px; height: 20px; font-size: 0.65rem; font-weight: bold;
+            display: none; align-items: center; justify-content: center;
+        }
+        #teacher-alerts-panel {
+            position: fixed; top: 128px; right: 20px;
+            width: 360px; max-height: 480px; overflow-y: auto;
+            z-index: 1049; display: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            border-radius: 12px; border: none;
+        }
+        #teacher-alerts-panel .alert-card {
+            border-left: 4px solid #f59e0b;
+            background: #fffbeb; border-radius: 6px;
+            padding: 10px 12px; margin-bottom: 8px; font-size: 0.85rem;
+        }
+
+        /* ── Misc ── */
+        .badge-large { font-size: 1.1rem; padding: 0.5rem 0.9rem; }
+        .session-code { font-size: 1.2rem; }
+        .centered-controls { text-align: center; margin-bottom: 2rem; }
+        .chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 0.78rem; font-weight: 500; padding: 3px 10px;
+            border-radius: 20px;
         }
 
         @media (max-width: 768px) {
-            #tacticTimer {
-                font-size: 2.1rem;
-                padding: 0.75rem 1.2rem;
-                min-width: 130px !important;
-            }
-
-            #tacticName {
-                font-size: 1.15rem;
-            }
-
-            .badge-large,
-            .session-code {
-                font-size: 1rem;
-            }
-
-            .ai-wrapper {
-                width: 100%;
-                justify-content: space-between;
-                padding: 12px 14px;
-                gap: 10px;
-            }
-
-            .ai-label {
-                font-size: 0.95rem;
-            }
+            #tacticTimer { font-size: 2.1rem; padding: 0.75rem 1.2rem; min-width: 130px !important; }
+            #tacticName  { font-size: 1.15rem; }
+            .ai-wrapper  { width: 100%; justify-content: space-between; padding: 12px 14px; gap: 10px; }
+            .ai-label    { font-size: 0.95rem; }
         }
     </style>
 </head>
 
-<body class="bg-light">
-    <div class="container my-5">
-        <a href="/sessions" class="btn btn-outline-primary mb-3">← Back to Sessions</a>
-        <div class="card shadow-lg">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">Session #{{ session.id }}</h4>
+<body>
+
+<!-- ── Navbar ── -->
+<nav class="top-nav">
+    <a href="/sessions" class="d-flex align-items-center gap-2 text-decoration-none"
+       style="color:#374151;font-weight:600;font-size:0.92rem;">
+        <i class="bi bi-arrow-left" style="color:#667eea;"></i> Minhas Sessões
+    </a>
+    <div class="d-flex align-items-center gap-2">
+        <span class="chip d-none d-sm-inline-flex" style="background:#f3f4f6;color:#374151;">
+            {{ current_user.username }}
+        </span>
+        <a href="/perfil" class="btn btn-sm rounded-pill px-3"
+           style="background:#ede9fe;color:#7c3aed;font-weight:600;border:none;font-size:0.82rem;">
+            <i class="bi bi-person-circle me-1"></i>Perfil
+        </a>
+        <a href="/logout" class="btn btn-sm rounded-pill px-3"
+           style="background:#fee2e2;color:#dc2626;font-weight:600;border:none;font-size:0.82rem;">
+            <i class="bi bi-box-arrow-right me-1"></i>Sair
+        </a>
+    </div>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="session-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <div style="font-size:0.75rem;opacity:0.75;letter-spacing:.6px;text-transform:uppercase;margin-bottom:4px;">
+                Sessão de aprendizagem
             </div>
-            <div class="card-body">
-                <h5 class="card-title">
-                    Status:
-                    <span class="badge
-                        {% if session.status == 'in-progress' %}
-                            bg-success
-                        {% elif session.status == 'finished' %}
-                            bg-warning text-dark
-                        {% else %}
-                            bg-secondary
-                        {% endif %}">
-                        {{ session.status.capitalize() }}
-                    </span>
-                    <span class="badge bg-warning badge-large">
-                        Tempo de Aula {{ session.full_tatics_time }} min
-                    </span>
-                </h5>
-
-                <!-- Código da Sessão -->
-                <p class="session-code my-5">
-                    Código da Sessão:
-                    <span class="badge bg-secondary" id="sessionCode">{{ session.code }}</span>
-                    <button id="copyBtn" class="btn btn-sm btn-outline-primary" onclick="copyCode()">Copiar</button>
-                </p>
-
-                <!-- Controles da sessão -->
-                <div class="centered-controls">
-
-                {% if current_user.type == 'teacher' %}
-                <!-- ===== VISÃO DO PROFESSOR ===== -->
-                <div class="d-flex gap-3 justify-content-center flex-wrap mb-4">
-                    <button id="startSessionBtn" class="btn btn-success btn-lg px-5 py-3 shadow fw-bold text-uppercase rounded-pill
-                        {% if session.status == 'in-progress' %} d-none {% endif %}">
-                        <i class="bi bi-play-circle-fill me-2"></i> Abrir Sessão para Alunos
-                    </button>
-                    <button id="endSessionBtn" class="btn btn-outline-danger btn-lg px-4 py-3">Encerrar Sessão</button>
-                </div>
-
-                <!-- Tática Adaptativa por IA -->
-                <div class="text-center mb-4">
-                    <div class="ai-wrapper" style="{% if session.status == 'in-progress' %}opacity:0.6;{% endif %}">
-                        <span class="ai-label">
-                            <div class="ai-icon-bg">🧠</div>
-                            Tática Adaptativa por IA
-                        </span>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input ai-switch" type="checkbox" role="switch"
-                                id="adaptiveTacticSwitch"
-                                {% if session.adaptive_tactic_enabled %}checked{% endif %}
-                                {% if session.status == 'in-progress' %}disabled{% endif %}>
-                        </div>
-                    </div>
-                    <p class="text-muted small mt-1" id="adaptive-tactic-status">
-                        {% if session.status == 'in-progress' %}
-                            Bloqueado durante sessão em andamento.
-                        {% elif session.adaptive_tactic_enabled %}
-                            Ativado: a IA escolhe a próxima tática para cada aluno.
-                        {% else %}
-                            Desativado: alunos seguem a ordem normal das táticas.
-                        {% endif %}
-                    </p>
-                </div>
-
-                <!-- Chat — Debate Síncrono (sempre visível se existir na estratégia) -->
-                <div id="teacher-debate-section" class="mt-4 mb-4 d-none">
-                    <h5 class="text-primary fw-bold"><i class="bi bi-chat-dots-fill me-2"></i>Chat — Debate Síncrono</h5>
-                    <div id="teacher_debate_chat"></div>
-                </div>
-
-                <!-- Apresentação Síncrona (sempre visível se existir na estratégia) -->
-                <div id="teacher-apresentacao-section" class="mt-4 mb-4 d-none">
-                    <h5 class="text-warning fw-bold"><i class="bi bi-camera-video-fill me-2"></i>Apresentação Síncrona</h5>
-                    <div class="alert alert-warning d-flex align-items-center gap-3">
-                        <div>
-                            Esta sessão inclui uma tática de <strong>Apresentação Síncrona</strong>.
-                            Clique no botão para abrir o link da apresentação.
-                        </div>
-                        <button id="teacher-apresentacao-btn" class="btn btn-warning fw-bold rounded-pill px-4" onclick="window.open(window.teacher_apresentacao_link, '_blank')">
-                            <i class="bi bi-camera-video-fill me-2"></i>Abrir Apresentação
-                        </button>
-                    </div>
-                </div>
-
+            <h3 class="fw-bold mb-2">#{{ session.id }}</h3>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                {% if session.status == 'in-progress' %}
+                <span class="status-pill status-in-progress">
+                    <span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;animation:blink 1.4s infinite;"></span>
+                    Em andamento
+                </span>
+                {% elif session.status == 'finished' %}
+                <span class="status-pill status-finished">
+                    <i class="bi bi-check-circle-fill" style="font-size:0.7rem;"></i> Encerrada
+                </span>
                 {% else %}
-                <!-- ===== VISÃO DO ALUNO ===== -->
-                <div id="student-start-area" class="text-center py-4">
-                    <button id="studentStartBtn" class="btn btn-success btn-lg px-5 py-3 shadow fw-bold text-uppercase rounded-pill"
-                        {% if session.status != 'in-progress' %} disabled {% endif %}>
-                        {% if session.status == 'in-progress' %}
-                            <i class="bi bi-play-circle-fill me-2"></i> Iniciar Minha Sessão
-                        {% else %}
-                            <i class="bi bi-hourglass me-2"></i> Aguardando professor abrir a sessão…
-                        {% endif %}
-                    </button>
-                    <p class="text-muted mt-3" id="student-start-msg">Clique para iniciar o seu percurso de aprendizagem.</p>
-                </div>
-
-                <div id="student-tactic-area" style="display:none">
-                    <div id="session-goal-banner" class="d-none alert border-0 mb-3"
-                        style="background: linear-gradient(135deg,#43e97b22,#38f9d722); border-left: 4px solid #43e97b !important;">
-                        <div class="d-flex align-items-start gap-2">
-                            <span style="font-size:1.4rem;">🎯</span>
-                            <div>
-                                <strong class="text-success">Objetivo desta sessão</strong>
-                                <p class="mb-0 text-muted small" id="session-goal-text"></p>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="plan-panel" class="d-none mb-3"></div>
-                    <div id="adaptive-reasoning-banner" class="d-none alert border-0 mb-3"
-                        style="background: linear-gradient(135deg,#4facfe22,#00f2fe22); border-left: 4px solid #4facfe !important;">
-                        <div class="d-flex align-items-start gap-2">
-                            <span style="font-size:1.4rem;">🧠</span>
-                            <div>
-                                <strong class="text-primary">Personalização por IA</strong>
-                                <p class="mb-0 text-muted small" id="adaptive-reasoning-text"></p>
-                            </div>
-                        </div>
-                    </div>
-                    <h5 id="tacticName" class="text-primary fw-bold mt-2 display-6">Aguardando início...</h5>
-                    <div class="d-flex justify-content-center align-items-center gap-3 my-4">
-                        <div id="tacticTimer" class="badge bg-dark rounded shadow border border-secondary" style="min-width: 180px;">--</div>
-                    </div>
-                    <div id="current_tatic_description" class="alert alert-light border shadow-sm text-muted fst-italic mt-3" role="alert"></div>
-                    <div id="tatic_here" class="mt-4"></div>
-                    <div id="mastery-panel" class="mt-4" style="display:none;"></div>
-                    {% if session.domains %}
-                    <div id="pdf_data" data-pdfs='{{ session.domains[0].pdfs | tojson | safe }}'></div>
-                    {% else %}
-                    <p class="text-muted small mt-3">Nenhum domínio associado a essa sessão.</p>
-                    {% endif %}
-                </div>
+                <span class="status-pill status-pending">
+                    <i class="bi bi-hourglass" style="font-size:0.7rem;"></i> {{ session.status | capitalize }}
+                </span>
                 {% endif %}
+                <span class="status-pill" style="background:rgba(253,224,71,0.2);color:#fef08a;border:1px solid rgba(253,224,71,0.35);">
+                    <i class="bi bi-clock"></i> {{ session.full_tatics_time }} min
+                </span>
+            </div>
+        </div>
+        <!-- Código da sessão no hero -->
+        <div class="code-box">
+            <i class="bi bi-key" style="opacity:0.8;"></i>
+            <span id="sessionCode">{{ session.code }}</span>
+            <button id="copyBtn" onclick="copyCode()"
+                    class="btn btn-sm ms-1"
+                    style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.35);border-radius:8px;padding:2px 10px;font-size:0.78rem;">
+                Copiar
+            </button>
+        </div>
+    </div>
+</div>
 
+<!-- ── Main content ── -->
+<div class="container py-4" style="max-width:900px;">
+
+    <!-- ── Controles ── -->
+    <div class="content-card p-4 mb-4">
+        <div class="centered-controls">
+
+        {% if current_user.type == 'teacher' %}
+        <!-- PROFESSOR -->
+        <p class="section-label"><i class="bi bi-sliders"></i> Controles da Sessão</p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap mb-4">
+            <button id="startSessionBtn"
+                    class="btn btn-hero-primary btn-lg
+                    {% if session.status == 'in-progress' %} d-none {% endif %}">
+                <i class="bi bi-play-circle-fill me-2"></i>Abrir Sessão para Alunos
+            </button>
+            <button id="endSessionBtn"
+                    class="btn btn-lg rounded-pill px-4 fw-bold"
+                    style="border:2px solid #fca5a5;color:#dc2626;background:transparent;"
+                    {% if session.status != 'in-progress' %}disabled{% endif %}>
+                <i class="bi bi-stop-circle me-2"></i>Encerrar Sessão
+            </button>
+        </div>
+
+        <!-- Tática Adaptativa por IA -->
+        <div class="text-center mb-4">
+            <div class="ai-wrapper" style="{% if session.status == 'in-progress' %}opacity:0.6;{% endif %}">
+                <span class="ai-label">
+                    <div class="ai-icon-bg">🧠</div>
+                    Tática Adaptativa por IA
+                </span>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input ai-switch" type="checkbox" role="switch"
+                        id="adaptiveTacticSwitch"
+                        {% if session.adaptive_tactic_enabled %}checked{% endif %}
+                        {% if session.status == 'in-progress' %}disabled{% endif %}>
                 </div>
-
-                <hr>
-
-                <!-- Avaliação da Sessão -->
-                <div class="card mb-4 shadow-sm border-warning">
-                    <div class="card-body text-center">
-                        <h5 class="card-title text-warning">Avaliação da Aula</h5>
-
-                        <div id="rating-container">
-                            <!-- Stars for Student -->
-                            {% if current_user.type == 'student' %}
-                            <div class="fs-2 text-warning mb-2" id="star-rating" style="cursor: pointer;">
-                                <i class="bi bi-star" data-value="1" onclick="submitRating(1)"></i>
-                                <i class="bi bi-star" data-value="2" onclick="submitRating(2)"></i>
-                                <i class="bi bi-star" data-value="3" onclick="submitRating(3)"></i>
-                                <i class="bi bi-star" data-value="4" onclick="submitRating(4)"></i>
-                                <i class="bi bi-star" data-value="5" onclick="submitRating(5)"></i>
-                            </div>
-                            <small class="text-muted" id="user-rating-msg">Toque para avaliar</small>
-                            {% endif %}
-
-                            <!-- Stats for Everyone -->
-                            <div class="mt-2">
-                                <span class="badge bg-warning text-dark fs-6">
-                                    <i class="bi bi-star-fill"></i> <span id="avg-rating">--</span>
-                                </span>
-                                <span class="text-muted ms-2">(<span id="rating-count">0</span> votos)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Estratégias -->
-                <div class="mb-4">
-                    <h5 class="text-decoration-underline">Strategies & Tactics</h5>
-                    {% if session.strategies %}
-                    {% for strategy in session.strategies %}
-                    <div class="mb-4">
-                        <h6 class="text-primary">{{ strategy.name }}</h6>
-                        {% if strategy.tatics %}
-                        <table class="table table-bordered table-sm">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Táticas</th>
-                                    <th>Time (min)</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for tatic in strategy.tatics %}
-                                <tr>
-                                    <td>{{ tatic.name }}</td>
-                                    <td>{{ tatic.time }}</td>
-                                    <td>
-                                        {{ tatic.description or '—' }}
-                                        {% if tatic.name and 'reuso' in tatic.name|lower and session.domains and session.domains[0].pdfs %}
-                                        <div class="mt-2 d-flex flex-wrap gap-2">
-                                            {% for pdf in session.domains[0].pdfs %}
-                                            <a href="{{ url_for('domain.proxy_pdf_download', pdf_id=pdf.id) }}"
-                                                class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener noreferrer">
-                                                <i class="bi bi-download me-1"></i>{{ pdf.filename }}
-                                            </a>
-                                            {% endfor %}
-                                        </div>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        {% else %}
-                        <p class="text-muted"><em>No tactics for this strategy.</em></p>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <em>No strategies assigned.</em>
-                    {% endif %}
-                </div>
-
-                <!-- Notas extras, colocada pelo professor! -->
-                <h5 class="mb-4 text-decoration-underline d-flex align-items-center">
-                    <i class="bi bi-pencil-square my-2"></i>Notas Extras
-                </h5>
-                {% if current_user.type != 'student' %}
-                <div class="container my-5">
-                    {% if session.students %}
-
-                    {% for student in session.students_ids_with_usernames %}
-                    <form action="/studant/extranotes/{{student.id}}" method="post"
-                        class="row g-2 align-items-center mb-3">
-                        <div class="col-auto">
-                            <span class="badge bg-primary fs-6">{{ student.username }}</span>
-                        </div>
-                        <div class="col-auto">
-                            <input type="number" name="extra_notes" min="0" max="10" class="form-control"
-                                placeholder="0 ... 10" required>
-                            <input type="text" name="session_id" value="{{ session.id }}" hidden>
-                        </div>
-                        <div class="col-auto">
-                            <button type="submit" class="btn btn-success">Atribuir Nota</button>
-                        </div>
-                    </form>
-                    {% endfor %}
-                    {% else %}
-                    <em class="text-muted">Nenhum aluno atribuído.</em>
-                    {% endif %}
-                </div>
-                {% endif %}
-
-                {% if current_user.type == 'teacher' %}
-                <div class="container my-4">
-                    <div class="row g-3" id="student-extra-note-card">
-                        {% for ext_note in session.extra_notes %}
-                        <div class="col-sm-6 col-md-4 col-lg-3" id="student-extra-note-card-created">
-                            <div class="card shadow-sm h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title text-primary">{{ ext_note.estudante_username }}</h5>
-                                    <h6 class="card-subtitle mb-2 text-success">Nota Atribuída:</h6>
-                                    <p class="card-text display-6">{{ ext_note.extra_notes }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-                <!-- Notas Extras, colocada pelo aluno! -->
-                {% if current_user.type == 'student' %}
-                <div class="container my-4">
-                    <div class="row g-3" id="student-extra-note-card">
-                        {% if session.extra_notes %}
-                        {% for ext_note in session.extra_notes %}
-                        {% if ext_note.estudante_username == current_user.username %}
-                        <div class="col-sm-6 col-md-4 col-lg-3" id="student-extra-note-card-created">
-                            <div class="card shadow-sm h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title text-primary">{{ ext_note.estudante_username }}</h5>
-                                    <h6 class="card-subtitle mb-2 text-success">Nota Atribuída:</h6>
-                                    <p class="card-text display-6">{{ ext_note.extra_notes }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% endfor %}
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-
-
-                <!-- Resultado dos Exercícios -->
-                <h5 class="text-decoration-underline">Exercícios Respondidos nesta sessão</h5>
-                {% if current_user.type != 'student' %}
-                <div class="container my-4" id="student-answers-card">
-                    {% if session.verified_answers %}
-                    {% for ans in session.verified_answers %}
-                    <div class="card mb-3 shadow-sm">
-                        <div class="card-body">
-                            <ul class="list-group list-group-flush">
-                                <h5 class="card-title text-primary">{{ ans.student_name }}</h5>
-                                <h6 class="card-subtitle mb-3 text-success">Pontuação: {{ ans.score }}</h6>
-                                {% for answer in ans.answers %}
-                                <li class="list-group-item d-flex justify-content-between align-items-center"
-                                    id="student-answers-card-created">
-                                    <span>Exercício <strong>{{ answer.exercise_id }}</strong> | Resposta: {{
-                                        answer.answer }}</span>
-                                    {% if answer.correct %}
-                                    <span class="badge bg-success">Acertou</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Errou</span>
-                                    {% endif %}
-                                </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-
+            </div>
+            <p class="text-muted small mt-1" id="adaptive-tactic-status">
+                {% if session.status == 'in-progress' %}
+                    Bloqueado durante sessão em andamento.
+                {% elif session.adaptive_tactic_enabled %}
+                    Ativado: a IA escolhe a próxima tática para cada aluno.
                 {% else %}
-                <div id="student-answers-card" class="container my-4">
-                    {% for ans in session.verified_answers %}
-                    {% if ans.student_name == current_user.username %}
-                    <div class="card mb-3 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="card-title text-primary">{{ ans.student_name }}</h5>
-                            <h6 class="card-subtitle mb-3 text-success">Pontuação: {{ ans.score }}</h6>
-                            <ul class="list-group list-group-flush">
-                                {% for answer in ans.answers %}
-                                <li class="list-group-item d-flex justify-content-between align-items-center"
-                                    id="student-answers-card-created">
-                                    <span>Exercício <strong>{{ answer.exercise_id }}</strong> | Resposta: {{
-                                        answer.answer
-                                        }}</span>
-                                    {% if answer.correct %}
-                                    <span class="badge bg-success">Acertou</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Errou</span>
-                                    {% endif %}
-                                </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+                    Desativado: alunos seguem a ordem normal das táticas.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Chat Debate Síncrono -->
+        <div id="teacher-debate-section" class="mt-4 mb-4 d-none text-start">
+            <p class="section-label"><i class="bi bi-chat-dots-fill" style="color:#667eea;"></i> Chat — Debate Síncrono</p>
+            <div id="teacher_debate_chat"></div>
+        </div>
+
+        <!-- Apresentação Síncrona -->
+        <div id="teacher-apresentacao-section" class="mt-4 mb-4 d-none text-start">
+            <p class="section-label"><i class="bi bi-camera-video-fill" style="color:#f59e0b;"></i> Apresentação Síncrona</p>
+            <div class="d-flex align-items-center gap-3 p-3 rounded-3"
+                 style="background:#fffbeb;border:1px solid #fde68a;">
+                <div class="flex-grow-1 text-muted small">
+                    Esta sessão inclui uma tática de <strong>Apresentação Síncrona</strong>.
+                </div>
+                <button id="teacher-apresentacao-btn"
+                        class="btn fw-bold rounded-pill px-4 flex-shrink-0"
+                        style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;"
+                        onclick="window.open(window.teacher_apresentacao_link, '_blank')">
+                    <i class="bi bi-camera-video-fill me-2"></i>Abrir
+                </button>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- ALUNO -->
+        <div id="student-start-area" class="text-center py-3">
+            <button id="studentStartBtn"
+                    class="btn btn-hero-primary btn-lg"
+                    {% if session.status != 'in-progress' %} disabled {% endif %}>
+                {% if session.status == 'in-progress' %}
+                    <i class="bi bi-play-circle-fill me-2"></i>Iniciar Minha Sessão
+                {% else %}
+                    <i class="bi bi-hourglass me-2"></i>Aguardando professor abrir a sessão…
+                {% endif %}
+            </button>
+            <p class="text-muted mt-3 small" id="student-start-msg">Clique para iniciar o seu percurso de aprendizagem.</p>
+        </div>
+
+        <div id="student-tactic-area" style="display:none">
+            <div id="session-goal-banner" class="d-none alert border-0 mb-3 text-start"
+                style="background:linear-gradient(135deg,#43e97b22,#38f9d722);border-left:4px solid #43e97b !important;">
+                <div class="d-flex align-items-start gap-2">
+                    <span style="font-size:1.4rem;">🎯</span>
+                    <div>
+                        <strong class="text-success">Objetivo desta sessão</strong>
+                        <p class="mb-0 text-muted small" id="session-goal-text"></p>
                     </div>
-                    {% endif %}
-                    {% endfor %}
-                    {% endif %}
                 </div>
-
-
-                <!-- Professores -->
-                <div class="m-3">
-                    <h5 class="text-decoration-underline">Teachers</h5>
-                    {% if session.teachers %}
-                    {% for teacher in session.teachers %}
-                    <span class="badge bg-success me-1">{{ teacher }}</span>
-                    {% endfor %}
-                    {% else %}
-                    <em>No teachers assigned.</em>
-                    {% endif %}
+            </div>
+            <div id="plan-panel" class="d-none mb-3"></div>
+            <div id="adaptive-reasoning-banner" class="d-none alert border-0 mb-3 text-start"
+                style="background:linear-gradient(135deg,#4facfe22,#00f2fe22);border-left:4px solid #4facfe !important;">
+                <div class="d-flex align-items-start gap-2">
+                    <span style="font-size:1.4rem;">🧠</span>
+                    <div>
+                        <strong class="text-primary">Personalização por IA</strong>
+                        <p class="mb-0 text-muted small" id="adaptive-reasoning-text"></p>
+                    </div>
                 </div>
+            </div>
+            <h5 id="tacticName" class="text-primary fw-bold mt-2 display-6">Aguardando início...</h5>
+            <div class="d-flex justify-content-center align-items-center gap-3 my-4">
+                <div id="tacticTimer" class="badge bg-dark rounded shadow border border-secondary" style="min-width:180px;">--</div>
+            </div>
+            <div id="current_tatic_description" class="alert alert-light border shadow-sm text-muted fst-italic mt-3" role="alert"></div>
+            <div id="tatic_here" class="mt-4"></div>
+            {% if session.domains %}
+            <div id="pdf_data" data-pdfs='{{ session.domains[0].pdfs | tojson | safe }}'></div>
+            {% endif %}
+        </div>
+        {% endif %}
 
-                <!-- Alunos -->
-                <div class="m-3">
-                    <h5 class="text-decoration-underline">Students</h5>
-                    {% if session.students %}
-                    {% for student in session.students %}
-                    <span class="badge bg-secondary me-1">{{ student }}</span>
-                    {% endfor %}
-                    {% else %}
-                    <em>No students assigned.</em>
-                    {% endif %}
-                </div>
+        </div><!-- /centered-controls -->
+    </div>
+
+    <!-- ── Avaliação ── -->
+    <div class="content-card p-4 mb-4">
+        <p class="section-label"><i class="bi bi-star"></i> Avaliação da Aula</p>
+        <div id="rating-container" class="text-center">
+            {% if current_user.type == 'student' %}
+            <div class="fs-1 mb-2" id="star-rating" style="cursor:pointer;color:#f59e0b;">
+                <i class="bi bi-star" data-value="1" onclick="submitRating(1)"></i>
+                <i class="bi bi-star" data-value="2" onclick="submitRating(2)"></i>
+                <i class="bi bi-star" data-value="3" onclick="submitRating(3)"></i>
+                <i class="bi bi-star" data-value="4" onclick="submitRating(4)"></i>
+                <i class="bi bi-star" data-value="5" onclick="submitRating(5)"></i>
+            </div>
+            <small class="text-muted" id="user-rating-msg">Toque para avaliar</small>
+            {% endif %}
+            <div class="mt-2">
+                <span class="badge fs-6 px-3 py-2" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;">
+                    <i class="bi bi-star-fill me-1"></i><span id="avg-rating">--</span>
+                </span>
+                <span class="text-muted ms-2 small">(<span id="rating-count">0</span> votos)</span>
             </div>
         </div>
     </div>
+
+    <!-- ── Planos por IA (professor) ── -->
+    {% if current_user.type == 'teacher' %}
+    <div class="content-card p-4 mb-4" id="student-plans-section">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <p class="section-label mb-0"><i class="bi bi-robot"></i> Planos Personalizados por IA</p>
+            <span id="plans-count-badge" class="badge bg-secondary" style="font-size:0.72rem;">Aguardando...</span>
+        </div>
+        <p class="text-muted small mb-3" id="plans-empty-msg">
+            Nenhum plano gerado ainda. Os planos aparecem aqui conforme os alunos iniciam a sessão e
+            concluem o primeiro exercício com a Tática Adaptativa ativada.
+        </p>
+        <div id="student-plans-container" class="row g-3"></div>
+    </div>
+    {% endif %}
+
+    <!-- ── Estratégias & Táticas ── -->
+    <div class="content-card p-4 mb-4">
+        <p class="section-label"><i class="bi bi-diagram-3"></i> Estratégias & Táticas</p>
+        {% if session.strategies %}
+        {% for strategy in session.strategies %}
+        <div class="mb-4">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <span style="width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:inline-block;"></span>
+                <span class="fw-bold" style="color:#374151;">{{ strategy.name }}</span>
+            </div>
+            {% if strategy.tatics %}
+            <div class="table-responsive">
+                <table class="table tactics-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:35%;">Tática</th>
+                            <th style="width:12%;">Tempo</th>
+                            <th>Descrição / Materiais</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tatic in strategy.tatics %}
+                        <tr>
+                            <td>
+                                <span class="tactic-name-badge">{{ tatic.name }}</span>
+                            </td>
+                            <td>
+                                <span class="chip" style="background:#f3f4f6;color:#6b7280;">
+                                    <i class="bi bi-clock"></i> {{ tatic.time }} min
+                                </span>
+                            </td>
+                            <td>
+                                <span class="text-muted small">{{ tatic.description or '—' }}</span>
+                                {% if tatic.name and 'reuso' in tatic.name|lower %}
+                                {% set reuso_pdfs = [] %}
+                                {% if tatic.domain_id and tactic_domains_map[tatic.domain_id|string] is defined %}
+                                    {% set reuso_pdfs = tactic_domains_map[tatic.domain_id|string].pdfs or [] %}
+                                {% elif session.domains and session.domains[0].pdfs %}
+                                    {% set reuso_pdfs = session.domains[0].pdfs %}
+                                {% endif %}
+                                {% if reuso_pdfs %}
+                                <div class="mt-2 d-flex flex-wrap gap-2">
+                                    {% for pdf in reuso_pdfs %}
+                                    <a href="{{ url_for('domain.proxy_pdf_download', pdf_id=pdf.id) }}"
+                                       class="btn btn-sm rounded-pill"
+                                       style="background:#ede9fe;color:#7c3aed;font-size:0.75rem;font-weight:600;border:none;"
+                                       target="_blank" rel="noopener noreferrer">
+                                        <i class="bi bi-download me-1"></i>{{ pdf.filename }}
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted small fst-italic">Nenhuma tática cadastrada.</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted small fst-italic">Nenhuma estratégia atribuída.</p>
+        {% endif %}
     </div>
 
-    <script>
-        window.session_id = "{{ session.id }}";
-        window.token = "{{ token }}";
-        let session_json = {{ session | tojson }};
-        let current_user_json = {{ current_user | tojson }};
-        window.current_strategy_id = "{{ session.strategies[0].id if session.strategies else '' }}";
-        window.domain_id = (session_json.domains && session_json.domains.length > 0) ? session_json.domains[0].id : null;
-        window.my_username = current_user_json.username;
-        window.my_id = current_user_json.id;
-        window.user_type = current_user_json.type;
-        window.teacher_debate_chat_id = null;
-        window.teacher_apresentacao_link = null;
-        {% if session.strategies and session.strategies[0].tatics %}
-        {% for tatic in session.strategies[0].tatics %}
-        {% if 'debate sincrono' in tatic.name|lower %}
-        window.teacher_debate_chat_id = {{ tatic.chat_id if tatic.chat_id is not none else 'null' }};
+    <!-- ── Notas Extras ── -->
+    <div class="content-card p-4 mb-4">
+        <p class="section-label"><i class="bi bi-pencil-square"></i> Notas Extras</p>
+
+        {% if current_user.type == 'teacher' %}
+        {% if session.students %}
+        <div class="d-flex flex-column gap-3 mb-4">
+            {% for student in session.students_ids_with_usernames %}
+            <form action="/studant/extranotes/{{ student.id }}" method="post"
+                  class="d-flex align-items-center gap-3 note-form flex-wrap">
+                <span class="chip flex-shrink-0" style="background:#ede9fe;color:#7c3aed;font-size:0.85rem;padding:5px 12px;">
+                    {{ student.username }}
+                </span>
+                <input type="number" name="extra_notes" min="0" max="10"
+                       class="form-control" style="max-width:110px;" placeholder="0 – 10" required>
+                <input type="text" name="session_id" value="{{ session.id }}" hidden>
+                <button type="submit" class="btn btn-sm rounded-pill px-3 fw-600"
+                        style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;font-weight:600;">
+                    Atribuir
+                </button>
+            </form>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small fst-italic mb-3">Nenhum aluno atribuído.</p>
         {% endif %}
-        {% if 'apresentacao sincrona' in tatic.name|lower or 'apresentação síncrona' in tatic.name|lower %}
-        window.teacher_apresentacao_link = {{ tatic.description | tojson if tatic.description is not none else 'null' }};
+
+        <!-- Notas atribuídas (professor) -->
+        {% if session.extra_notes %}
+        <div class="row g-3" id="student-extra-note-card">
+            {% for ext_note in session.extra_notes %}
+            <div class="col-sm-6 col-md-4 col-lg-3" id="student-extra-note-card-created">
+                <div class="card border-0 h-100" style="background:#f8f9ff;border-radius:12px;">
+                    <div class="card-body text-center py-3">
+                        <div class="chip mx-auto mb-2" style="background:#ede9fe;color:#7c3aed;">{{ ext_note.estudante_username }}</div>
+                        <div class="text-muted small mb-1">Nota Atribuída</div>
+                        <div class="fw-bold" style="font-size:2rem;color:#374151;">{{ ext_note.extra_notes }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
         {% endif %}
-        {% endfor %}
+
+        {% else %}
+        <!-- Notas para o aluno -->
+        <div class="row g-3" id="student-extra-note-card">
+            {% if session.extra_notes %}
+            {% for ext_note in session.extra_notes %}
+            {% if ext_note.estudante_username == current_user.username %}
+            <div class="col-sm-6 col-md-4" id="student-extra-note-card-created">
+                <div class="card border-0" style="background:#f8f9ff;border-radius:12px;">
+                    <div class="card-body text-center py-3">
+                        <div class="text-muted small mb-1">Sua Nota Extra</div>
+                        <div class="fw-bold" style="font-size:2.2rem;color:#374151;">{{ ext_note.extra_notes }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% else %}
+            <p class="text-muted small fst-italic">Nenhuma nota atribuída ainda.</p>
+            {% endif %}
+        </div>
         {% endif %}
-        console.log("current_user:", current_user_json);
-        // console.log(typeof session_json); // Agora será 'object'
-        // console.log()
-        // console.log(typeof session_json); // Agora será 'object'
-        // window.myUserId = "{{ current_user['id'] }}";
-        // window.chatId = "{{ chat_id }}";
-        // console.log("Chat ID:", window.chatId);
-    </script>
+    </div>
 
-    <script>
-        function copyCode() {
-            const codeText = document.getElementById("sessionCode").innerText;
-            const copyButton = document.getElementById("copyBtn");
+    <!-- ── Exercícios respondidos ── -->
+    <div class="content-card p-4 mb-4">
+        <p class="section-label"><i class="bi bi-check2-square"></i> Exercícios Respondidos</p>
 
-            navigator.clipboard.writeText(codeText)
-                .then(() => {
-                    copyButton.innerHTML = "✅ Copiado!";
-                    copyButton.classList.remove("btn-outline-primary");
-                    copyButton.classList.add("btn-success");
+        {% if current_user.type != 'student' %}
+        <div id="student-answers-card">
+            {% if session.verified_answers %}
+            {% for ans in session.verified_answers %}
+            <div class="card border-0 mb-3" style="border-radius:12px;background:#f8f9ff;">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="chip" style="background:#ede9fe;color:#7c3aed;font-size:0.85rem;padding:4px 12px;">{{ ans.student_name }}</span>
+                        <span class="fw-bold" style="color:#16a34a;">Pontuação: {{ ans.score }}</span>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for answer in ans.answers %}
+                        <li class="list-group-item border-0 d-flex justify-content-between align-items-center px-0"
+                            style="background:transparent;" id="student-answers-card-created">
+                            <span class="small text-muted">Exercício <strong class="text-dark">{{ answer.exercise_id }}</strong> · Resposta: {{ answer.answer }}</span>
+                            {% if answer.correct %}
+                            <span class="chip" style="background:#dcfce7;color:#16a34a;">✓ Acertou</span>
+                            {% else %}
+                            <span class="chip" style="background:#fee2e2;color:#dc2626;">✗ Errou</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="text-muted small fst-italic">Nenhum exercício respondido ainda.</p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div id="student-answers-card">
+            {% set answered = [] %}
+            {% for ans in session.verified_answers %}
+            {% if ans.student_name == current_user.username %}
+            {% set _ = answered.append(ans) %}
+            <div class="card border-0 mb-3" style="border-radius:12px;background:#f8f9ff;">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="chip" style="background:#ede9fe;color:#7c3aed;">{{ ans.student_name }}</span>
+                        <span class="fw-bold" style="color:#16a34a;">Pontuação: {{ ans.score }}</span>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for answer in ans.answers %}
+                        <li class="list-group-item border-0 d-flex justify-content-between align-items-center px-0"
+                            style="background:transparent;" id="student-answers-card-created">
+                            <span class="small text-muted">Exercício <strong class="text-dark">{{ answer.exercise_id }}</strong> · Resposta: {{ answer.answer }}</span>
+                            {% if answer.correct %}
+                            <span class="chip" style="background:#dcfce7;color:#16a34a;">✓ Acertou</span>
+                            {% else %}
+                            <span class="chip" style="background:#fee2e2;color:#dc2626;">✗ Errou</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% if not answered %}
+            <p class="text-muted small fst-italic">Nenhum exercício respondido ainda.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
 
-                    setTimeout(() => {
-                        copyButton.innerHTML = "Copiar";
-                        copyButton.classList.remove("btn-success");
-                        copyButton.classList.add("btn-outline-primary");
-                    }, 2000);
-                })
-                .catch(err => {
-                    copyButton.innerHTML = "Erro!";
-                    copyButton.classList.remove("btn-outline-primary");
-                    copyButton.classList.add("btn-danger");
+    <!-- ── Participantes ── -->
+    <div class="content-card p-4 mb-5">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <p class="section-label"><i class="bi bi-person-workspace"></i> Professores</p>
+                {% if session.teachers %}
+                {% for teacher in session.teachers %}
+                <span class="chip me-1 mb-1" style="background:#dcfce7;color:#16a34a;">{{ teacher }}</span>
+                {% endfor %}
+                {% else %}
+                <em class="text-muted small">Nenhum professor</em>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <p class="section-label"><i class="bi bi-people"></i> Alunos</p>
+                {% if session.students %}
+                {% for student in session.students %}
+                <span class="chip me-1 mb-1" style="background:#f3f4f6;color:#374151;">{{ student }}</span>
+                {% endfor %}
+                {% else %}
+                <em class="text-muted small">Nenhum aluno</em>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 
-                    setTimeout(() => {
-                        copyButton.innerHTML = "Copiar";
-                        copyButton.classList.remove("btn-danger");
-                        copyButton.classList.add("btn-outline-primary");
-                    }, 2000);
-                });
-        }
+</div><!-- /container -->
 
-        async function loadRating() {
-            try {
-                const res = await fetch(`/sessions/${window.session_id}/rating`);
-                const data = await res.json();
+<style>
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+</style>
 
-                const avgEl = document.getElementById('avg-rating');
-                const countEl = document.getElementById('rating-count');
+<!-- ── Scripts de dados ── -->
+<script>
+    window.session_id = "{{ session.id }}";
+    window.token = "{{ token }}";
+    let session_json = {{ session | tojson }};
+    let current_user_json = {{ current_user | tojson }};
+    window.current_strategy_id = "{{ session.strategies[0].id if session.strategies else '' }}";
+    window.domain_id = (session_json.domains && session_json.domains.length > 0) ? session_json.domains[0].id : null;
+    window.my_username = current_user_json.username;
+    window.my_id = current_user_json.id;
+    window.user_type = current_user_json.type;
+    window.teacher_debate_chat_id = null;
+    window.teacher_apresentacao_link = null;
+    {% if session.strategies and session.strategies[0].tatics %}
+    {% for tatic in session.strategies[0].tatics %}
+    {% if 'debate sincrono' in tatic.name|lower %}
+    window.teacher_debate_chat_id = {{ tatic.chat_id if tatic.chat_id is not none else 'null' }};
+    {% endif %}
+    {% if 'apresentacao sincrona' in tatic.name|lower or 'apresentação síncrona' in tatic.name|lower %}
+    window.teacher_apresentacao_link = {{ tatic.description | tojson if tatic.description is not none else 'null' }};
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+    console.log("current_user:", current_user_json);
+</script>
 
-                if(avgEl) avgEl.innerText = data.average ? parseFloat(data.average).toFixed(1) : '0.0';
-                if(countEl) countEl.innerText = data.count || 0;
+<script>
+    function copyCode() {
+        const codeText = document.getElementById("sessionCode").innerText;
+        const copyButton = document.getElementById("copyBtn");
+        navigator.clipboard.writeText(codeText)
+            .then(() => {
+                copyButton.innerHTML = "✅ Copiado!";
+                copyButton.style.background = "rgba(74,222,128,0.25)";
+                setTimeout(() => { copyButton.innerHTML = "Copiar"; copyButton.style.background = "rgba(255,255,255,0.2)"; }, 2000);
+            })
+            .catch(() => { copyButton.innerHTML = "Erro!"; });
+    }
 
-                if (window.current_user_json.type === 'student' && data.user_rating) {
-                    updateStars(data.user_rating);
-                    const msgEl = document.getElementById('user-rating-msg');
-                    if(msgEl) msgEl.innerText = "Sua avaliação: " + data.user_rating;
-                }
-            } catch (e) {
-                console.error("Error loading rating", e);
+    async function loadRating() {
+        try {
+            const res = await fetch(`/sessions/${window.session_id}/rating`);
+            const data = await res.json();
+            const avgEl = document.getElementById('avg-rating');
+            const countEl = document.getElementById('rating-count');
+            if (avgEl) avgEl.innerText = data.average ? parseFloat(data.average).toFixed(1) : '0.0';
+            if (countEl) countEl.innerText = data.count || 0;
+            if (window.current_user_json && window.current_user_json.type === 'student' && data.user_rating) {
+                updateStars(data.user_rating);
+                const msgEl = document.getElementById('user-rating-msg');
+                if (msgEl) msgEl.innerText = "Sua avaliação: " + data.user_rating;
             }
-        }
+        } catch (e) { console.error("Error loading rating", e); }
+    }
 
-        async function submitRating(value) {
-            try {
-                const res = await fetch(`/sessions/${window.session_id}/rate`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({rating: value})
-                });
-                if (res.ok) {
-                    updateStars(value);
-                    const msgEl = document.getElementById('user-rating-msg');
-                    if(msgEl) msgEl.innerText = "Sua avaliação: " + value;
-                    loadRating(); // Refresh stats
-                }
-            } catch (e) {
-                console.error("Error submitting rating", e);
-            }
-        }
-
-        function updateStars(value) {
-            const stars = document.querySelectorAll('#star-rating i');
-            stars.forEach(s => {
-                const v = parseInt(s.getAttribute('data-value'));
-                if (v <= value) {
-                    s.classList.remove('bi-star');
-                    s.classList.add('bi-star-fill');
-                } else {
-                    s.classList.remove('bi-star-fill');
-                    s.classList.add('bi-star');
-                }
+    async function submitRating(value) {
+        try {
+            const res = await fetch(`/sessions/${window.session_id}/rate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rating: value })
             });
+            if (res.ok) {
+                updateStars(value);
+                const msgEl = document.getElementById('user-rating-msg');
+                if (msgEl) msgEl.innerText = "Sua avaliação: " + value;
+                loadRating();
+            }
+        } catch (e) { console.error("Error submitting rating", e); }
+    }
+
+    function updateStars(value) {
+        const stars = document.querySelectorAll('#star-rating i');
+        stars.forEach(s => {
+            const v = parseInt(s.getAttribute('data-value'));
+            s.classList.toggle('bi-star-fill', v <= value);
+            s.classList.toggle('bi-star', v > value);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadRating);
+
+    /* startSessionBtn e endSessionBtn são gerenciados pelo show_session.js */
+</script>
+
+<!-- Bootstrap Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/show_session.js') }}"></script>
+
+{% if current_user.type == 'student' %}
+<!-- ===== TUTOR IA FLUTUANTE ===== -->
+<div id="fc-wrapper" style="position:fixed;bottom:24px;right:24px;z-index:9999;">
+    <button id="fc-toggle" onclick="fcToggle()" title="Abrir Tutor IA desta Sessão"
+        style="width:62px;height:62px;border-radius:50%;
+               background:linear-gradient(135deg,#0d6efd,#6610f2);
+               color:white;border:none;font-size:1.5rem;
+               box-shadow:0 4px 18px rgba(13,110,253,0.45);
+               cursor:pointer;position:relative;transition:transform 0.2s;"
+        onmouseover="this.style.transform='scale(1.08)'"
+        onmouseout="this.style.transform='scale(1)'">
+        💬
+        <span id="fc-badge"
+            style="display:none;position:absolute;top:-3px;right:-3px;
+                   background:#dc3545;color:white;border-radius:50%;
+                   width:20px;height:20px;font-size:0.65rem;font-weight:700;
+                   line-height:20px;text-align:center;border:2px solid white;">!</span>
+    </button>
+    <div id="fc-window"
+        style="display:none;flex-direction:column;width:350px;height:500px;
+               background:white;border-radius:18px;
+               box-shadow:0 10px 40px rgba(0,0,0,0.22);
+               position:absolute;bottom:72px;right:0;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#0d6efd,#6610f2);color:white;
+                    padding:13px 16px;display:flex;justify-content:space-between;
+                    align-items:center;flex-shrink:0;">
+            <div>
+                <strong style="font-size:0.95rem;">🤖 Tutor IA — Sessão Atual</strong>
+                <div id="fc-domain-label" style="font-size:0.71rem;opacity:0.88;margin-top:2px;">
+                    Assistente de Aprendizado Adaptativo
+                </div>
+            </div>
+            <div style="display:flex;gap:6px;">
+                <button onclick="fcClearChat()" title="Limpar histórico desta sessão"
+                    style="background:rgba(255,255,255,0.18);border:none;color:white;
+                           border-radius:6px;padding:3px 8px;font-size:0.75rem;cursor:pointer;">🗑️</button>
+                <button onclick="fcClose()"
+                    style="background:rgba(255,255,255,0.18);border:none;color:white;
+                           border-radius:6px;padding:3px 8px;font-size:0.75rem;cursor:pointer;">✕</button>
+            </div>
+        </div>
+        <div id="fc-messages"
+            style="flex:1;overflow-y:auto;padding:13px;background:#f8f9fa;
+                   display:flex;flex-direction:column;gap:9px;">
+            <div id="fc-placeholder"
+                style="text-align:center;color:#6c757d;margin-top:30px;
+                       font-size:0.88rem;padding:0 14px;">
+                <div style="font-size:2.4rem;margin-bottom:10px;">📖</div>
+                <p style="margin:0;line-height:1.6;">
+                    Olá! Estou aqui para ajudar com dúvidas sobre o <strong>conteúdo desta sessão</strong>.
+                </p>
+                <p style="margin-top:10px;font-size:0.76rem;color:#adb5bd;">
+                    ⏰ A cada 10 minutos envio uma dica personalizada sobre o tema!
+                </p>
+            </div>
+        </div>
+        <div style="padding:10px 13px;background:white;border-top:1px solid #e9ecef;flex-shrink:0;">
+            <div style="display:flex;gap:8px;align-items:center;">
+                <input type="text" id="fc-input"
+                    placeholder="Tire uma dúvida sobre o conteúdo..."
+                    style="flex:1;border:1px solid #dee2e6;border-radius:22px;
+                           padding:7px 15px;font-size:0.87rem;outline:none;
+                           transition:border-color 0.15s;"
+                    onfocus="this.style.borderColor='#0d6efd'"
+                    onblur="this.style.borderColor='#dee2e6'"
+                    onkeypress="if(event.key==='Enter')fcSend()">
+                <button id="fc-send-btn" onclick="fcSend()"
+                    style="background:linear-gradient(135deg,#0d6efd,#6610f2);
+                           color:white;border:none;border-radius:50%;
+                           width:38px;height:38px;cursor:pointer;font-size:1rem;
+                           display:flex;align-items:center;justify-content:center;
+                           flex-shrink:0;transition:opacity 0.15s;">➤</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    const COOLDOWN_MS = 30000;
+    const PROACTIVE_MS = 10 * 60 * 1000;
+    let isOpen = false, sending = false, lastSent = 0;
+    const SID = window.session_id;
+
+    window.fcToggle = function () {
+        isOpen = !isOpen;
+        document.getElementById('fc-window').style.display = isOpen ? 'flex' : 'none';
+        if (isOpen) {
+            document.getElementById('fc-badge').style.display = 'none';
+            document.getElementById('fc-input').focus();
+            document.getElementById('fc-messages').scrollTop = 999999;
         }
+    };
+    window.fcClose = function () { isOpen = false; document.getElementById('fc-window').style.display = 'none'; };
+    window.fcClearChat = function () {
+        if (!confirm('Apagar o histórico do chat desta sessão?')) return;
+        fetch(`/orchestrator/student/chat_history?session_id=${SID}`, { method: 'DELETE' })
+            .then(r => { if (r.ok) { document.getElementById('fc-messages').innerHTML = ''; document.getElementById('fc-placeholder').style.display = 'block'; } });
+    };
 
-        // Call on load
-        document.addEventListener('DOMContentLoaded', loadRating);
-    </script>
+    function addMsg(sender, text) {
+        const ph = document.getElementById('fc-placeholder');
+        if (ph) ph.style.display = 'none';
+        const box = document.getElementById('fc-messages');
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.justifyContent = sender === 'user' ? 'flex-end' : sender === 'system' ? 'center' : 'flex-start';
+        const bub = document.createElement('div');
+        bub.style.maxWidth = '85%'; bub.style.padding = '8px 13px'; bub.style.fontSize = '0.86rem';
+        bub.style.lineHeight = '1.55'; bub.style.whiteSpace = 'pre-wrap'; bub.style.wordBreak = 'break-word';
+        const safe = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const rich = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+        if (sender === 'user') {
+            bub.style.background = '#0d6efd'; bub.style.color = 'white'; bub.style.borderRadius = '16px 16px 4px 16px'; bub.innerText = text;
+        } else if (sender === 'proactive') {
+            bub.style.background = 'linear-gradient(135deg,#e8f4fd,#f0e6ff)'; bub.style.border = '1px solid #c5d9f8'; bub.style.borderRadius = '16px 16px 16px 4px';
+            bub.innerHTML = '<strong style="color:#0d6efd;font-size:0.76rem;display:block;margin-bottom:5px;">📚 DICA PERSONALIZADA</strong>' + rich;
+        } else if (sender === 'agent') {
+            bub.style.background = 'white'; bub.style.border = '1px solid #e9ecef'; bub.style.boxShadow = '0 1px 5px rgba(0,0,0,0.07)'; bub.style.borderRadius = '16px 16px 16px 4px';
+            bub.innerHTML = '<strong style="color:#6610f2;font-size:0.76rem;display:block;margin-bottom:5px;">🤖 TUTOR IA</strong>' + rich;
+        } else {
+            bub.style.color = '#adb5bd'; bub.style.fontSize = '0.78rem'; bub.style.fontStyle = 'italic'; bub.innerText = text;
+        }
+        const id = 'fc-' + Date.now() + Math.random().toString(36).slice(2, 7);
+        row.id = id; row.appendChild(bub); box.appendChild(row); box.scrollTop = box.scrollHeight;
+        return id;
+    }
+    function removeMsg(id) { const e = document.getElementById(id); if (e) e.remove(); }
 
-    <!-- Bootstrap Bundle (inclui Popper) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    window.fcSend = async function () {
+        if (sending) return;
+        const now = Date.now();
+        if (now - lastSent < COOLDOWN_MS) { addMsg('system', `Aguarde ${Math.ceil((COOLDOWN_MS-(now-lastSent))/1000)}s antes de enviar outra mensagem.`); return; }
+        const inp = document.getElementById('fc-input');
+        const text = inp.value.trim();
+        if (!text) return;
+        addMsg('user', text); inp.value = ''; sending = true; lastSent = now;
+        document.getElementById('fc-send-btn').style.opacity = '0.45';
+        const lid = addMsg('system', '⏳ Processando...');
+        try {
+            const r = await fetch('/orchestrator/student/floating_chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({question:text,session_id:SID}) });
+            removeMsg(lid); const d = await r.json();
+            addMsg(r.ok ? 'agent' : 'system', r.ok ? (d.answer || 'Sem resposta.') : 'Erro: ' + (d.error || 'Falha.'));
+        } catch { removeMsg(lid); addMsg('system', 'Erro de conexão. Verifique os serviços.'); }
+        finally { sending = false; document.getElementById('fc-send-btn').style.opacity = '1'; }
+    };
 
-    <script src="{{ url_for('static', filename='js/show_session.js') }}"></script>
+    async function proactive() {
+        try {
+            const r = await fetch(`/orchestrator/student/proactive?session_id=${SID}`);
+            if (!r.ok) return; const d = await r.json(); if (!d.recommendation) return;
+            addMsg('proactive', d.recommendation);
+            if (!isOpen) document.getElementById('fc-badge').style.display = 'block';
+        } catch {}
+    }
+
+    let loadedMsgCount = 0;
+    async function loadHistory(isPolling) {
+        try {
+            const r = await fetch(`/orchestrator/student/chat_history?session_id=${SID}`, { credentials:'same-origin' });
+            if (!r.ok) return; const h = await r.json(); if (!Array.isArray(h)) return;
+            const newMsgs = h.slice(loadedMsgCount);
+            newMsgs.forEach(m => addMsg(m.sender, m.message));
+            if (isPolling && newMsgs.length > 0 && !isOpen) document.getElementById('fc-badge').style.display = 'block';
+            loadedMsgCount = h.length;
+        } catch {}
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!SID) return;
+        loadHistory(false);
+        setInterval(function () { loadHistory(true); }, 30000);
+        setTimeout(function () { proactive(); setInterval(proactive, PROACTIVE_MS); }, PROACTIVE_MS);
+    });
+})();
+</script>
+{% endif %}
+
+
+{% if current_user and current_user['type'] == 'teacher' %}
+<!-- Botão de alertas fixo -->
+<div style="position:relative;display:inline-block;">
+    <button id="teacher-alerts-btn" onclick="toggleAlerts()" title="Alertas de aprendizagem">
+        <i class="bi bi-bell-fill"></i>
+    </button>
+    <span id="alerts-badge"></span>
+</div>
+<div id="teacher-alerts-panel" class="card border-0">
+    <div class="card-header d-flex justify-content-between align-items-center"
+         style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border-radius:12px 12px 0 0;padding:12px 16px;">
+        <span style="font-weight:600;"><i class="bi bi-bell-fill me-2"></i>Alertas de Aprendizagem</span>
+        <button class="btn btn-sm btn-light py-0 px-2" onclick="toggleAlerts()">✕</button>
+    </div>
+    <div id="alerts-list" style="background:#fffbeb;padding:12px;border-radius:0 0 12px 12px;">
+        <p class="text-muted text-center small mt-1 mb-1" id="alerts-empty">Nenhum alerta ainda.</p>
+    </div>
+</div>
+
+<script>
+(function () {
+    const SID = window.session_id;
+    const TOKEN = window.token;
+    let knownAlertIds = new Set(), panelOpen = false, newCount = 0;
+
+    function toggleAlerts() {
+        panelOpen = !panelOpen;
+        document.getElementById('teacher-alerts-panel').style.display = panelOpen ? 'block' : 'none';
+        if (panelOpen) { newCount = 0; const b = document.getElementById('alerts-badge'); b.style.display='none'; b.textContent=''; }
+    }
+    window.toggleAlerts = toggleAlerts;
+
+    function formatDate(iso) {
+        if (!iso) return '';
+        return new Date(iso).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    }
+
+    async function fetchAlerts() {
+        if (!SID) return;
+        try {
+            const r = await fetch(`/sessions/${SID}/teacher_alerts`, { credentials:'same-origin' });
+            if (!r.ok) return;
+            const alerts = await r.json();
+            if (!Array.isArray(alerts)) return;
+            const newAlerts = alerts.filter(a => !knownAlertIds.has(a.id));
+            if (!newAlerts.length) return;
+            const list = document.getElementById('alerts-list');
+            const empty = document.getElementById('alerts-empty');
+            if (empty) empty.remove();
+            newAlerts.forEach(a => {
+                knownAlertIds.add(a.id);
+                const card = document.createElement('div');
+                card.className = 'alert-card';
+                const emailHtml = a.student_email ? `<a href="mailto:${a.student_email}" class="ms-1" style="font-size:0.8rem;">${a.student_email}</a>` : '';
+                card.innerHTML = `<div class="d-flex justify-content-between align-items-center mb-1"><strong><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>${a.student_name||'Aluno ID '+a.student_id}${emailHtml}</strong><small class="text-muted">${formatDate(a.created_at)}</small></div><div class="mb-1"><span class="badge bg-danger me-1">Nota baixa</span><small class="text-danger fw-bold">${a.score??'?'}% na atividade</small></div><div style="color:#374151;">${a.message}</div>`;
+                list.prepend(card);
+            });
+            if (!panelOpen) { newCount += newAlerts.length; const b = document.getElementById('alerts-badge'); b.style.display='flex'; b.textContent=newCount>9?'9+':String(newCount); }
+        } catch(e) { console.error('[Alertas]', e); }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () { if (!SID) return; fetchAlerts(); setInterval(fetchAlerts, 30000); });
+})();
+</script>
+
+<script>
+(function () {
+    const SID = window.session_id;
+    const loadedPlans = new Map();
+
+    function formatTime(d) { return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }); }
+
+    function buildCardHTML(plan) {
+        const tacticsHtml = plan.tactic_sequence.map(function(t,idx){
+            return '<div class="plan-tactic-row"><span class="tactic-num">'+(idx+1)+'</span><div><strong style="font-size:0.92rem;">'+t.name+'</strong>'+(t.reason?'<div class="text-muted" style="font-size:0.8rem;line-height:1.4;">'+t.reason+'</div>':'')+'</div></div>';
+        }).join('');
+        const violHtml = (plan.guardrail_violations&&plan.guardrail_violations.length)?'<div class="mt-2 pt-2" style="border-top:1px dashed #dee2e6;"><small class="text-info"><i class="bi bi-shield-check me-1"></i>'+plan.guardrail_violations.join(' &nbsp;|&nbsp; ')+'</small></div>':'';
+        const goalHtml = plan.overall_goal?'<div class="plan-goal-box mb-3"><small class="d-block text-muted fw-bold mb-1" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:.5px;">🎯 Objetivo Pedagógico</small><span style="font-size:0.92rem;color:#1a202c;">'+plan.overall_goal+'</span></div>':'';
+        return '<div class="card-body"><div class="d-flex align-items-center justify-content-between mb-3"><div class="d-flex align-items-center gap-2"><span class="badge bg-secondary fs-6">'+plan.student_name+'</span><small class="text-muted"><i class="bi bi-robot me-1"></i>Plano gerado por IA</small></div><small class="text-muted" id="plan-time-'+plan.student_id+'">'+formatTime(new Date())+'</small></div>'+goalHtml+'<div class="mb-2"><small class="fw-bold text-uppercase" style="font-size:0.72rem;letter-spacing:.6px;color:#6b7280;">Sequência de Táticas</small></div>'+tacticsHtml+violHtml+'</div>';
+    }
+
+    function upsertPlanCard(plan) {
+        const container = document.getElementById('student-plans-container');
+        if (!container) return;
+        const emptyMsg = document.getElementById('plans-empty-msg');
+        if (emptyMsg) emptyMsg.style.display = 'none';
+        const colId = 'plan-col-' + plan.student_id;
+        let col = document.getElementById(colId);
+        if (!col) { col = document.createElement('div'); col.id = colId; col.className = 'col-12 col-md-6'; col.innerHTML = '<div class="card shadow-sm plan-card h-100" id="plan-card-'+plan.student_id+'"></div>'; container.appendChild(col); }
+        const card = document.getElementById('plan-card-' + plan.student_id);
+        if (card) card.innerHTML = buildCardHTML(plan);
+    }
+
+    async function loadStudentPlans() {
+        if (!SID) return;
+        try {
+            const r = await fetch('/orchestrator/teacher/student_plans?session_id=' + SID, { credentials:'same-origin' });
+            if (!r.ok) return;
+            const plans = await r.json();
+            if (!Array.isArray(plans)) return;
+            plans.forEach(function(plan) {
+                const key = JSON.stringify(plan.tactic_sequence) + plan.overall_goal;
+                if (loadedPlans.get(plan.student_id) !== key) { loadedPlans.set(plan.student_id, key); upsertPlanCard(plan); }
+            });
+            const badge = document.getElementById('plans-count-badge');
+            if (badge) { badge.textContent = loadedPlans.size>0 ? loadedPlans.size+' aluno(s) com plano' : 'Aguardando...'; badge.className = loadedPlans.size>0 ? 'badge bg-success' : 'badge bg-secondary'; }
+        } catch(e) { console.error('[PlansIA]', e); }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () { if (!SID) return; loadStudentPlans(); setInterval(loadStudentPlans, 30000); });
+})();
+</script>
+{% endif %}
 
 </body>
-
 </html>

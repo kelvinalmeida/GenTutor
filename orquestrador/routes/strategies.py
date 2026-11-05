@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect
 from requests.exceptions import RequestException
 import requests
-from .services_routs import STRATEGIES_URL, CONTROL_URL, USER_URL
+from .services_routs import STRATEGIES_URL, CONTROL_URL, USER_URL, DOMAIN_URL
 from extensions import socketio
 from flask_socketio import join_room, leave_room, send, emit
 from .auth import token_required
@@ -22,31 +22,33 @@ def create_strategy():
         tatics = request.form.getlist("tatics")
         times = request.form.getlist("times")
         description = request.form.getlist("description")
+        domain_ids = request.form.getlist("domain_ids")
         score = request.form.get("score")
-        # return jsonify(name, tatics, times, description)
 
-        # Junta tática + tempo
+        # Junta tática + tempo + domain_id
         tatics_with_times = [
             {
                 "name": tatics[i],
                 "time": float(times[i]) if times[i] and times[i].strip() else 0.0,
-                "description": description[i]
+                "description": description[i],
+                "domain_id": domain_ids[i] if i < len(domain_ids) and domain_ids[i] else None
             }
             for i in range(len(tatics))
         ]
 
         # return f"{tatics_with_times}"
 
-        # adicionando o chat_id para cada tática
+        # Um único chat compartilhado por todos os Debates Síncronos da estratégia
+        shared_debate_chat_id = None
         for tatics_with_time in tatics_with_times:
             if tatics_with_time["name"] == "Debate Sincrono":
-                chat_requests = requests.post(f"{STRATEGIES_URL}/chat/create")
-                
-                if chat_requests.status_code == 200:
-                    chat = chat_requests.json()
-                    tatics_with_time["chat_id"] = chat["id"]
-                else:
-                    return jsonify({"error": "Failed to create chat", "details": chat_requests.text}), chat_requests.status_code
+                if shared_debate_chat_id is None:
+                    chat_req = requests.post(f"{STRATEGIES_URL}/chat/create")
+                    if chat_req.status_code == 200:
+                        shared_debate_chat_id = chat_req.json()["id"]
+                    else:
+                        return jsonify({"error": "Failed to create chat", "details": chat_req.text}), chat_req.status_code
+                tatics_with_time["chat_id"] = shared_debate_chat_id
             else:
                 tatics_with_time["chat_id"] = None
         
@@ -79,6 +81,75 @@ def get_strategies(current_user=None):
         return jsonify({"error": "Strategies service unavailable", "details": str(e)}), 503
     
     
+@strategy_bp.route('/strategies/edit/<int:strategy_id>', methods=['GET', 'POST'])
+def edit_strategy(strategy_id):
+    if request.method == 'GET':
+        try:
+            resp_strategy = requests.get(f"{STRATEGIES_URL}/strategies/{strategy_id}")
+            resp_domains = requests.get(f"{DOMAIN_URL}/domains")
+            resp_strategies = requests.get(f"{STRATEGIES_URL}/strategies")
+            strategy = resp_strategy.json()
+            domains = resp_domains.json() if resp_domains.ok else []
+            available_strategies = resp_strategies.json() if resp_strategies.ok else []
+            return render_template(
+                './strategies/edit_strategy.html',
+                strategy=strategy,
+                domains=domains,
+                available_strategies=available_strategies
+            )
+        except RequestException as e:
+            return jsonify({"error": str(e)}), 503
+
+    # POST — processa formulário de edição
+    name = request.form.get("name")
+    tatics = request.form.getlist("tatics")
+    times = request.form.getlist("times")
+    description = request.form.getlist("description")
+    domain_ids = request.form.getlist("domain_ids")
+    chat_ids = request.form.getlist("chat_ids")
+    score = request.form.get("score", 0)
+
+    # Reutiliza o chat_id já existente entre os Debates Síncronos (ou cria um único novo)
+    shared_debate_chat_id = next(
+        (chat_ids[i] for i in range(len(tatics))
+         if tatics[i] == "Debate Sincrono" and i < len(chat_ids) and chat_ids[i]),
+        None
+    )
+
+    tatics_with_times = []
+    for i in range(len(tatics)):
+        domain_id_val = domain_ids[i] if i < len(domain_ids) and domain_ids[i] else None
+
+        if tatics[i] == "Debate Sincrono":
+            if not shared_debate_chat_id:
+                try:
+                    chat_req = requests.post(f"{STRATEGIES_URL}/chat/create")
+                    if chat_req.status_code == 200:
+                        shared_debate_chat_id = chat_req.json().get("id")
+                except Exception:
+                    pass
+            chat_id_val = shared_debate_chat_id
+        else:
+            chat_id_val = None
+
+        tatics_with_times.append({
+            "name": tatics[i],
+            "time": float(times[i]) if i < len(times) and times[i] and times[i].strip() else 0.0,
+            "description": description[i] if i < len(description) else "",
+            "chat_id": chat_id_val,
+            "domain_id": domain_id_val,
+        })
+
+    strategy_data = {"name": name, "tatics": tatics_with_times, "score": score}
+    try:
+        resp = requests.put(f"{STRATEGIES_URL}/strategies/{strategy_id}", json=strategy_data)
+        if resp.status_code == 200:
+            return redirect('/strategies')
+        return jsonify({"error": "Falha ao atualizar estratégia", "details": resp.text}), resp.status_code
+    except RequestException as e:
+        return jsonify({"error": str(e)}), 503
+
+
 @strategy_bp.route('/strategies/remove/<int:strategy_id>', methods=['POST'])
 def remove_strategy(strategy_id):
     try:

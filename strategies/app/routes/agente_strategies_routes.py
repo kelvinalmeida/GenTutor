@@ -33,29 +33,25 @@ def critique_strategy():
         data = request.json
         strategy_name = data.get('name')
         tactics_list = data.get('tactics', [])
-        reference_article = data.get('context')
 
-        # 2. Configuração do Cliente (Nova SDK)
-        # client = genai.Client(api_key=GEMINI_API_KEY)
+        # 2. Construção do Prompt
+        tactics_str = ', '.join(tactics_list) if tactics_list else 'Nenhuma tática informada'
+        prompt = f"""Avalie se a estratégia de ensino abaixo é pedagogicamente coerente.
 
-        # 3. Construção do Prompt
-        prompt = f"""
-        Atue como um Especialista Pedagógico.
-        Analise a seguinte estratégia de ensino com base no texto de referência.
+TÁTICAS DO SISTEMA:
+- Reuso: apresenta recursos didáticos (vídeos, PDFs, exercícios) por tempo determinado. Deve ser a primeira tática.
+- Debate Síncrono: interação em tempo real via chat entre alunos e professor.
+- Envio de Informação: envia materiais educativos por e-mail aos alunos.
+- Mudança de Estratégia: troca a abordagem didática durante a sessão.
+- Regras: dispara ações condicionais baseadas no desempenho do aluno.
 
-        TEXTO DE REFERÊNCIA:
-        {reference_article}
+ESTRATÉGIA SUBMETIDA:
+Nome: {strategy_name}
+Sequência: {tactics_str}
 
-        ESTRATÉGIA DO PROFESSOR:
-        Nome: {strategy_name}
-        Táticas: {', '.join(tactics_list)}
+Critérios: começa com Reuso, varia abordagens, faz sentido pedagógico.
 
-        SAÍDA ESPERADA (JSON):
-        {{
-            "grade": <nota inteira 0-10>,
-            "feedback": "<explicação concisa>"
-        }}
-        """
+{{"grade": <inteiro 0-10>, "feedback": "<2-3 frases justificando a nota>"}}"""
         
         # --- 4. Chamada LLM ---
         client = OpenAI(
@@ -548,7 +544,7 @@ def get_student_chat_history(username):
                         "private": []
                     }
                 
-                formatted_msg = f"(Para {target}): {content}"
+                formatted_msg = f"(Mensagem privada): {content}"
                 history_map[tid]["private"].append(formatted_msg)
 
         # 3. LLM Analysis

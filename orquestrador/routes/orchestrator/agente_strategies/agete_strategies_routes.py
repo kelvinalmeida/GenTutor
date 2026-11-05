@@ -31,46 +31,13 @@ def orchestrate_validation():
         data = request.json
         strategy_name = data.get('name')
         tactics_names = data.get('tactics', [])
-        
-        # ID do artigo fixo para este cenário (Padrão Pedagógico)
-        article_id = 1 
-        
-        # ---------------------------------------------------------
-        # 1. Passo: Buscar Memória (Call Domain Service)
-        # ---------------------------------------------------------
-        article_content = ""
-        try:
-            # O Orquestrador pede ao Domain o texto extraído do PDF
-            domain_response = requests.get(f"{DOMAIN_URL}/get_content/1", timeout=10)
-            
-            if domain_response.status_code == 200:
-                article_content = domain_response.json().get('content', "")
-                if not article_content:
-                    logging.warning("Conteúdo do artigo veio vazio do Domain.")
-                    article_content = "Conteúdo não disponível. Avalie apenas com base nas boas práticas gerais."
-            else:
-                logging.warning(f"Domain Service retornou erro: {domain_response.status_code}")
-                article_content = "Erro ao recuperar contexto pedagógico. Avalie genericamente."
 
-        except Exception as e:
-             logging.error(f"Erro ao conectar com Domain: {e}")
-             article_content = "Sistema de memória indisponível."
-
-        # ---------------------------------------------------------
-        # 2. Passo: Chamar o Agente Worker (Call Strategies Service)
-        # ---------------------------------------------------------
         worker_payload = {
             "name": strategy_name,
             "tactics": tactics_names,
-            "context": article_content
         }
 
-        # logging.warning(f"Payload enviado ao Strategies Agent: {worker_payload}")
-
-        logging.warning(f"Domain Service retornou erro: {domain_response.status_code}")
-        
         try:
-            # Envia para o serviço Strategies onde o Gemini processará
             agent_response = requests.post(f"{STRATEGIES_URL}/agent/critique", json=worker_payload, timeout=30)
             
             if agent_response.status_code == 200:

@@ -1,34 +1,361 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfil</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <title>Meu Perfil</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { background: #f0f2f5; }
+
+        .profile-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2.5rem 2rem 5rem;
+            text-align: center;
+            color: white;
+            position: relative;
+        }
+
+        .avatar-ring {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            border: 3px solid rgba(255,255,255,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.6rem;
+            margin: 0 auto 1rem;
+        }
+
+        .profile-card {
+            margin-top: -3rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            border: none;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #9ca3af;
+            margin-bottom: 1rem;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 1.5px solid #e5e7eb;
+            padding: 0.6rem 1rem;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: opacity 0.2s, transform 0.15s;
+        }
+        .btn-save:hover { opacity: 0.9; transform: translateY(-1px); color: white; }
+        .btn-save:disabled { opacity: 0.6; transform: none; }
+
+        .pref-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 500;
+        }
+
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast-msg {
+            padding: 12px 20px;
+            border-radius: 12px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
 
-<body class="bg-light text-center">
-    <div class="container py-4 py-md-5">
-        <div class="d-flex flex-column flex-md-row align-items-center justify-content-center gap-4">
-            <!-- Imagem do usuário -->
-            <div class="shadow p-3 border border-primary rounded-circle">
-                <img src="https://icon-library.com/images/user-png-icon/user-png-icon-16.jpg" alt="Minha Imagem"
-                    class="img-fluid" style="width: 120px; height: 120px;">
-            </div>
+<body>
 
-            <!-- Textos do perfil -->
-            <div class="shadow p-4 bg-white rounded text-start w-100" style="max-width: 520px;">
-                <h2 class="mb-4 fs-4">Welcome {{ user.name }} to Your Perfil</h2>
-                <p><strong>User ID:</strong> {{ user.id }}</p>
-                <p><strong>User Name:</strong> {{ user.username }}</p>
-                <p><strong>User Age:</strong> {{ user.age }}</p>
-                <p><strong>User Course:</strong> {{ user.course }}</p>
-            </div>
-        </div>
-
-        <a href="/" class="btn btn-primary mt-4">Voltar para Home Page</a>
+<!-- Topo -->
+<div class="profile-hero">
+    <a href="/sessions" class="btn btn-sm btn-light position-absolute top-0 start-0 m-3 rounded-pill px-3 opacity-90"
+       style="font-size:0.82rem;">
+        <i class="bi bi-arrow-left me-1"></i>Voltar para Sessões
+    </a>
+    <div class="avatar-ring">
+        {% if user.type == 'student' %}👨‍🎓{% else %}👨‍🏫{% endif %}
     </div>
-</body>
+    <h4 class="fw-bold mb-1">{{ user.name or user.username }}</h4>
+    <span class="badge rounded-pill px-3 py-1"
+          style="background:rgba(255,255,255,0.25);font-size:0.8rem;">
+        {{ '@' + user.username }}
+        &nbsp;·&nbsp;
+        {% if user.type == 'student' %}Aluno{% else %}Professor{% endif %}
+    </span>
+</div>
 
+<div class="container" style="max-width:680px;">
+
+    <!-- Card de info + edição -->
+    <div class="card profile-card mb-4">
+        <div class="card-body p-4">
+
+            <!-- Informações atuais -->
+            <p class="section-title"><i class="bi bi-person-lines-fill me-1"></i>Informações</p>
+            <div class="mb-4">
+                <div class="info-row">
+                    <div class="info-icon" style="background:#ede9fe;color:#7c3aed;"><i class="bi bi-person"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:0.72rem;">Nome completo</div>
+                        <div class="fw-semibold">{{ user.name or '—' }}</div>
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-icon" style="background:#dbeafe;color:#2563eb;"><i class="bi bi-envelope"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:0.72rem;">E-mail</div>
+                        <div class="fw-semibold">{{ user.email or '—' }}</div>
+                    </div>
+                </div>
+                {% if user.type == 'student' %}
+                <div class="info-row">
+                    <div class="info-icon" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-mortarboard"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:0.72rem;">Curso</div>
+                        <div class="fw-semibold">{{ user.course or '—' }}</div>
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-icon" style="background:#fef9c3;color:#ca8a04;"><i class="bi bi-calendar"></i></div>
+                    <div>
+                        <div class="text-muted" style="font-size:0.72rem;">Idade</div>
+                        <div class="fw-semibold">{{ user.age or '—' }}</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if user.type == 'student' %}
+            <!-- Preferências de aprendizagem -->
+            <p class="section-title"><i class="bi bi-sliders me-1"></i>Preferências de Aprendizagem</p>
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                {% if user.pref_content_type %}
+                <span class="pref-badge" style="background:#ede9fe;color:#7c3aed;">
+                    <i class="bi bi-file-earmark-text"></i> {{ user.pref_content_type }}
+                </span>
+                {% endif %}
+                {% if user.pref_communication %}
+                <span class="pref-badge" style="background:#dbeafe;color:#2563eb;">
+                    <i class="bi bi-chat-dots"></i> {{ user.pref_communication }}
+                </span>
+                {% endif %}
+                {% if user.pref_receive_email %}
+                <span class="pref-badge" style="background:#dcfce7;color:#16a34a;">
+                    <i class="bi bi-envelope-check"></i> Aceita e-mails
+                </span>
+                {% else %}
+                <span class="pref-badge" style="background:#fee2e2;color:#dc2626;">
+                    <i class="bi bi-envelope-x"></i> Não recebe e-mails
+                </span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <hr class="my-3">
+
+            <!-- Formulário de edição -->
+            <p class="section-title"><i class="bi bi-pencil-square me-1"></i>Atualizar Informações</p>
+            <form id="updateForm">
+                <div class="row g-3">
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label fw-semibold small">Nome completo</label>
+                        <input type="text" class="form-control" id="f-name" value="{{ user.name or '' }}" placeholder="Seu nome">
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label fw-semibold small">E-mail</label>
+                        <input type="email" class="form-control" id="f-email" value="{{ user.email or '' }}" placeholder="seu@email.com">
+                    </div>
+
+                    {% if user.type == 'student' %}
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label fw-semibold small">Curso</label>
+                        <input type="text" class="form-control" id="f-course" value="{{ user.course or '' }}" placeholder="Ex: Ciência da Computação">
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label fw-semibold small">Idade</label>
+                        <input type="number" class="form-control" id="f-age" value="{{ user.age or '' }}" min="1" max="120" placeholder="Ex: 22">
+                    </div>
+
+                    <div class="col-12">
+                        <hr class="my-1">
+                        <p class="section-title mt-3"><i class="bi bi-sliders me-1"></i>Preferências de Aprendizagem</p>
+                    </div>
+
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label fw-semibold small">Tipo de conteúdo preferido</label>
+                        <select class="form-select" id="f-pref-content">
+                            <option value="">— Selecione —</option>
+                            <option value="teoria" {% if user.pref_content_type == 'teoria' %}selected{% endif %}>Teoria</option>
+                            <option value="exemplos" {% if user.pref_content_type == 'exemplos' %}selected{% endif %}>Exemplos práticos</option>
+                            <option value="video" {% if user.pref_content_type == 'video' %}selected{% endif %}>Vídeo</option>
+                            <option value="exercicios" {% if user.pref_content_type == 'exercicios' %}selected{% endif %}>Exercícios</option>
+                            <option value="resumo" {% if user.pref_content_type == 'resumo' %}selected{% endif %}>Resumo</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label fw-semibold small">Canal de comunicação preferido</label>
+                        <select class="form-select" id="f-pref-comm">
+                            <option value="">— Selecione —</option>
+                            <option value="chat" {% if user.pref_communication == 'chat' %}selected{% endif %}>Chat</option>
+                            <option value="video" {% if user.pref_communication == 'video' %}selected{% endif %}>Vídeo chamada</option>
+                            <option value="individual" {% if user.pref_communication == 'individual' %}selected{% endif %}>Individual</option>
+                            <option value="grupo" {% if user.pref_communication == 'grupo' %}selected{% endif %}>Grupo</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="f-pref-email"
+                                   {% if user.pref_receive_email %}checked{% endif %}>
+                            <label class="form-check-label fw-semibold small" for="f-pref-email">
+                                Aceito receber e-mails com dicas e feedbacks personalizados
+                            </label>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label fw-semibold small">Idade</label>
+                        <input type="number" class="form-control" id="f-age" value="{{ user.age or '' }}" min="1" max="120" placeholder="Ex: 35">
+                    </div>
+                    {% endif %}
+
+                    <div class="col-12 mt-2">
+                        <button type="submit" class="btn btn-save w-100" id="saveBtn">
+                            <i class="bi bi-check-circle me-2"></i>Salvar Alterações
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+    const USER_TYPE = "{{ user.type }}";
+
+    function showToast(msg, success) {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = 'toast-msg';
+        t.style.background = success
+            ? 'linear-gradient(135deg,#16a34a,#15803d)'
+            : 'linear-gradient(135deg,#dc2626,#b91c1c)';
+        t.innerHTML = (success ? '✅ ' : '❌ ') + msg;
+        c.appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+    }
+
+    document.getElementById('updateForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+
+        const payload = {
+            name:  document.getElementById('f-name').value.trim(),
+            email: document.getElementById('f-email').value.trim(),
+        };
+
+        const ageEl = document.getElementById('f-age');
+        if (ageEl) payload.age = parseInt(ageEl.value) || null;
+
+        if (USER_TYPE === 'student') {
+            const courseEl = document.getElementById('f-course');
+            if (courseEl) payload.course = courseEl.value.trim();
+            payload.pref_content_type  = document.getElementById('f-pref-content').value;
+            payload.pref_communication = document.getElementById('f-pref-comm').value;
+            payload.pref_receive_email = document.getElementById('f-pref-email').checked;
+        }
+
+        try {
+            const res = await fetch('/perfil/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast('Perfil atualizado com sucesso!', true);
+                // Atualiza os badges de preferências na tela sem reload
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                showToast(data.error || 'Erro ao salvar.', false);
+            }
+        } catch {
+            showToast('Erro de conexão.', false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Salvar Alterações';
+        }
+    });
+</script>
+
+</body>
 </html>

@@ -55,11 +55,12 @@
                 {% endif %}
             </div>
 
-            <div class="card-footer bg-transparent border-0 text-end">
+            <div class="card-footer bg-transparent border-0 d-flex justify-content-end gap-2">
+                <a href="/strategies/edit/{{ strategy.id }}" class="btn btn-outline-primary btn-sm">✏️ Editar</a>
                 <form action="/strategies/remove/{{ strategy.id }}" method="POST"
                     onsubmit="return confirm('Tem certeza que deseja deletar esta estratégia?');" class="d-inline">
                     <input type="hidden" name="_method" value="DELETE">
-                    <button type="submit" class="btn btn-outline-danger btn-sm">🗑️ Deletar Estratégia</button>
+                    <button type="submit" class="btn btn-outline-danger btn-sm">🗑️ Deletar</button>
                 </form>
             </div>
         </div>

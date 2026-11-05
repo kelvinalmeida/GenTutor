@@ -3,79 +3,256 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Página de Login - SEP_ML</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEP_IA — Sessões de Ensino Personalizadas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
+
         body {
-            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            font-family: system-ui, -apple-system, sans-serif;
         }
 
-        .left-column {
-            background-color: #f8f9fa;
-            padding: 60px;
+        .landing-card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+            overflow: hidden;
+            max-width: 960px;
+            width: 100%;
+            display: flex;
+            flex-direction: row;
         }
 
-        .right-column {
-            background-color: #0d6efd;
-            color: white;
+        /* Left panel */
+        .panel-info {
+            flex: 1.2;
+            padding: 3rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
+        }
+        .logo-badge {
+            display: inline-flex;
             align-items: center;
-            padding: 40px;
+            gap: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 14px;
+            padding: 10px 18px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-bottom: 1.5rem;
+            width: fit-content;
+        }
+        .panel-info h2 {
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.75rem;
+        }
+        .panel-info p {
+            color: #6b7280;
+            font-size: 0.92rem;
+            line-height: 1.7;
+            margin-bottom: 0;
+        }
+        .feature-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-top: 1.5rem;
+        }
+        .feature-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        .feature-text { font-size: 0.85rem; color: #374151; line-height: 1.5; }
+        .feature-text strong { display: block; font-size: 0.88rem; color: #1f2937; margin-bottom: 2px; }
+
+        /* Right panel */
+        .panel-actions {
+            flex: 0.8;
+            background: #f9fafb;
+            border-left: 1px solid #f3f4f6;
+            padding: 3rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: stretch;
+        }
+        .panel-actions h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 0.4rem;
+        }
+        .panel-actions .subtitle {
+            font-size: 0.82rem;
+            color: #9ca3af;
+            margin-bottom: 2rem;
         }
 
-        .btn-custom {
-            min-width: 220px;
+        .btn-main {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.8rem 1.2rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: opacity 0.18s, transform 0.15s;
+            text-decoration: none;
+            margin-bottom: 0.75rem;
+        }
+        .btn-main:hover { opacity: 0.88; transform: translateY(-1px); color: white; }
+        .btn-main .btn-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
         }
 
-        .description {
-            margin-top: 20px;
-            font-size: 1.05rem;
-            color: #6c757d;
+        .btn-outline-action {
+            border: 1.5px solid #e5e7eb;
+            color: #374151;
+            background: white;
+            border-radius: 12px;
+            padding: 0.75rem 1.2rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: border-color 0.15s, background 0.15s;
+            text-decoration: none;
+            margin-bottom: 0.75rem;
+        }
+        .btn-outline-action:hover { border-color: #667eea; background: #f5f3ff; color: #5b21b6; }
+        .btn-outline-action .btn-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+        .btn-outline-action:hover .btn-icon { background: #ede9fe; }
+
+        .divider-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #d1d5db;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0.5rem 0 0.75rem;
+        }
+        .divider-label::before, .divider-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e5e7eb;
         }
 
-        @media (max-width: 768px) {
-
-            .left-column,
-            .right-column {
-                padding: 30px;
-                text-align: center;
-            }
+        /* Responsive */
+        @media (max-width: 700px) {
+            .landing-card { flex-direction: column; }
+            .panel-actions { border-left: none; border-top: 1px solid #f3f4f6; }
+            .panel-info { padding: 2rem; }
+            .panel-actions { padding: 2rem; }
         }
     </style>
 </head>
 
 <body>
 
-    <div class="container-fluid">
-        <div class="row h-100">
-            <!-- Coluna Esquerda -->
-            <div class="col-md-6 left-column d-flex flex-column justify-content-center">
-                <h1 class="fw-bold text-primary">SEP_ML</h1>
-                <h5 class="text-muted">Sessões de Ensino Personalizadas</h5>
-                <p class="description mt-4">
-                    No contexto da estrutura de uma Sessão de Ensino Online da camada Tutor do FA_PorT (Medeiros et al.,
-                    96), tendo como público-alvo um grupo de alunos online. O sistema proposto SEP_ML (S)essões de
-                    (E)nsino (P)ersonalizadas utiliza um conjunto de táticas inteligentes de ensino adaptadas à
-                    realidade de cada aluno.
-                </p>
-            </div>
+<div class="landing-card">
 
-            <!-- Coluna Direita -->
-            <div class="col-md-6 right-column">
-                <div class="text-center">
-                    <h3 class="mb-4 fw-light">Bem-vindo ao SEP_ML</h3>
-                    <a href="/login" class="btn btn-light btn-lg btn-custom">Fazer Login</a>
-                    <a href="/students/create" class="btn btn-outline-light btn-lg btn-custom my-3">Cadastrar Aluno</a>
-                    <a href="/teachers/create" class="btn btn-outline-light btn-lg btn-custom">Cadastrar Professor</a>
-                </div>
+    <!-- Info -->
+    <div class="panel-info">
+        <div class="logo-badge">
+            <i class="bi bi-mortarboard-fill"></i>SEP_IA
+        </div>
+        <h2>Sessões de Ensino Personalizadas com IA</h2>
+        <p>
+            Sistema inteligente de tutoria baseado no modelo FA_PorT (Medeiros, 2006).
+            Adapta táticas de ensino ao perfil de cada aluno, tornando o aprendizado online
+            mais eficiente e personalizado.
+        </p>
+
+        <div class="feature-row">
+            <div class="feature-icon" style="background:#ede9fe;color:#7c3aed;"><i class="bi bi-stars"></i></div>
+            <div class="feature-text">
+                <strong>IA Generativa</strong>
+                Gera explicações e materiais de estudo personalizados para cada aluno com base no seu desempenho.
+            </div>
+        </div>
+        <div class="feature-row">
+            <div class="feature-icon" style="background:#dbeafe;color:#2563eb;"><i class="bi bi-person-lines-fill"></i></div>
+            <div class="feature-text">
+                <strong>Perfil do Aluno</strong>
+                Identifica dificuldades e preferências de aprendizagem para selecionar a melhor tática de ensino.
+            </div>
+        </div>
+        <div class="feature-row">
+            <div class="feature-icon" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-chat-dots-fill"></i></div>
+            <div class="feature-text">
+                <strong>Acompanhamento pelo Chat Tutor</strong>
+                Alunos recebem suporte em tempo real via chat com tutor inteligente durante toda a sessão.
             </div>
         </div>
     </div>
 
-</body>
+    <!-- Actions -->
+    <div class="panel-actions">
+        <h3>Acesse o sistema</h3>
+        <p class="subtitle">Faça login ou crie uma conta para começar.</p>
 
+        <a href="/login" class="btn-main">
+            <span class="btn-icon"><i class="bi bi-box-arrow-in-right"></i></span>
+            Fazer Login
+        </a>
+
+        <div class="divider-label">ou criar conta</div>
+
+        <a href="/students/create" class="btn-outline-action">
+            <span class="btn-icon"><i class="bi bi-mortarboard"></i></span>
+            Cadastrar como Aluno
+        </a>
+        <a href="/teachers/create" class="btn-outline-action">
+            <span class="btn-icon"><i class="bi bi-person-workspace"></i></span>
+            Cadastrar como Professor
+        </a>
+    </div>
+
+</div>
+
+</body>
 </html>

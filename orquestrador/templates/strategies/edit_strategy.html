@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Estratégia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .draggable { cursor: grab; }
+        .sortable-item { cursor: move; }
+        .order-number {
+            width: 50px;
+            text-align: center;
+            background-color: #e9ecef;
+            border-right: 1px solid #ccc;
+            font-weight: bold;
+        }
+        .dragging { opacity: 0.5; }
+        .dropzone {
+            min-height: 200px;
+            padding: 10px;
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        .agent-modal-card {
+            margin: 10% auto;
+            padding: 2rem;
+            width: min(92vw, 600px);
+            border-radius: 15px;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+
+<div class="container my-4 my-md-5">
+    <div class="card shadow p-3 p-md-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Editar Estratégia</h2>
+            <a href="/strategies" class="btn btn-outline-secondary btn-sm">← Voltar</a>
+        </div>
+
+        <form method="POST" action="/strategies/edit/{{ strategy.id }}">
+            <!-- Nome -->
+            <div class="mb-3">
+                <label for="name" class="form-label">Nome da Estratégia</label>
+                <input type="text" class="form-control" id="name" name="name"
+                       value="{{ strategy.name }}" required>
+            </div>
+
+            <!-- Score (preservado) -->
+            <input type="hidden" name="score" id="scoreInput" value="{{ strategy.score }}">
+
+            <!-- Táticas Disponíveis -->
+            <div class="mb-3">
+                <label class="form-label">Táticas Disponíveis (arraste para baixo)</label>
+                <div class="list-group">
+                    <div class="list-group-item draggable" draggable="true">Reuso</div>
+                    <div class="list-group-item draggable" draggable="true">Debate Sincrono</div>
+                    <div class="list-group-item draggable" draggable="true">Envio de Informacao</div>
+                    <div class="list-group-item draggable" draggable="true">Mudanca de Estrategia</div>
+                    <div class="list-group-item draggable" draggable="true">Apresentacao Sincrona</div>
+                    <div class="list-group-item draggable" draggable="true">Regra</div>
+                </div>
+            </div>
+
+            <!-- Dropzone das táticas escolhidas -->
+            <div class="mb-3">
+                <label class="form-label">Táticas Escolhidas + Tempo (min)</label>
+                <div id="dropzone" class="dropzone"></div>
+            </div>
+
+            <!-- Botões -->
+            <div class="d-grid gap-2 d-md-flex">
+                <button type="submit" class="btn btn-success flex-grow-1">
+                    ✅ Salvar Alterações
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="openAgentAnalysis()">
+                    🤖 Revalidar com IA
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal do Agente IA -->
+<div id="agentModal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.5); backdrop-filter: blur(5px);">
+    <div class="card shadow-lg agent-modal-card">
+        <div class="text-center mb-4">
+            <h3 class="text-primary fw-bold">🤖 Análise do Agente Pedagógico</h3>
+            <p class="text-muted">Consultando base de conhecimento...</p>
+        </div>
+        <div id="agentLoading" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Avaliando consistência pedagógica...</p>
+        </div>
+        <div id="agentResult" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="h5 mb-0">Nota de Qualidade:</span>
+                <span id="agentGrade" class="display-6 fw-bold">--</span>
+            </div>
+            <div class="alert alert-light border" role="alert">
+                <strong>Feedback do Especialista:</strong>
+                <p id="agentFeedback" class="mb-0 mt-2 text-dark">--</p>
+            </div>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <button type="button" class="btn btn-outline-secondary" onclick="closeModal()">
+                    ✏️ Continuar Editando
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Dados injetados pelo servidor
+    const availableStrategies = {{ available_strategies | tojson | safe }};
+    const availableDomains    = {{ domains | tojson | safe }};
+    const existingStrategy    = {{ strategy | tojson | safe }};
+
+    const dropzone = document.getElementById('dropzone');
+
+    // --- Pré-popula o dropzone com as táticas existentes ---
+    document.addEventListener('DOMContentLoaded', () => {
+        (existingStrategy.tatics || []).forEach(tactic => {
+            const desc = (tactic.description && tactic.description !== 'hidden')
+                ? tactic.description : '';
+            addTacticToDropzone(
+                tactic.name,
+                tactic.time   != null ? tactic.time   : '',
+                desc,
+                tactic.domain_id != null ? tactic.domain_id : '',
+                tactic.chat_id   != null ? tactic.chat_id   : ''
+            );
+        });
+    });
+
+    // --- Drag das táticas disponíveis ---
+    document.querySelectorAll('.draggable').forEach(item => {
+        item.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/plain', item.textContent.trim());
+        });
+    });
+
+    dropzone.addEventListener('dragover', e => e.preventDefault());
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        const tacticName = e.dataTransfer.getData('text/plain');
+        if (tacticName) addTacticToDropzone(tacticName);
+        updateOrderNumbers();
+    });
+
+    // --- Função principal: adiciona tática ao dropzone ---
+    function addTacticToDropzone(tacticName,
+                                  prefillTime      = '',
+                                  prefillDesc      = '',
+                                  prefillDomainId  = '',
+                                  prefillChatId    = '') {
+
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('input-group', 'mb-2', 'sortable-item');
+        wrapper.setAttribute('draggable', 'true');
+
+        // Número de ordem
+        const orderSpan = document.createElement('span');
+        orderSpan.className = 'input-group-text order-number';
+        orderSpan.textContent = '1º';
+
+        // Nome da tática (hidden)
+        const inputHidden = document.createElement('input');
+        inputHidden.type  = 'hidden';
+        inputHidden.name  = 'tatics';
+        inputHidden.value = tacticName;
+
+        // Label visível
+        const tacticText = document.createElement('span');
+        tacticText.className   = 'input-group-text';
+        tacticText.textContent = tacticName;
+
+        // Tempo
+        const inputTime = document.createElement('input');
+        inputTime.type        = 'number';
+        inputTime.name        = 'times';
+        inputTime.className   = 'form-control';
+        inputTime.style.width = '100px';
+        inputTime.placeholder = 'Tempo (min)';
+        inputTime.required    = true;
+        inputTime.min         = '0';
+        inputTime.max         = '60';
+        inputTime.step        = '0.01';
+        if (prefillTime !== '' && prefillTime !== null) inputTime.value = prefillTime;
+
+        // chat_id (preserva o chat do Debate Sincrono existente)
+        const inputChatId = document.createElement('input');
+        inputChatId.type  = 'hidden';
+        inputChatId.name  = 'chat_ids';
+        inputChatId.value = prefillChatId || '';
+
+        // domain_id
+        const inputDomainId = document.createElement('input');
+        inputDomainId.type  = 'hidden';
+        inputDomainId.name  = 'domain_ids';
+        inputDomainId.value = prefillDomainId || '';
+
+        wrapper.appendChild(orderSpan);
+        wrapper.appendChild(inputHidden);
+        wrapper.appendChild(tacticText);
+        wrapper.appendChild(inputTime);
+        wrapper.appendChild(inputChatId);
+        wrapper.appendChild(inputDomainId);
+
+        // --- Campos específicos por tática ---
+        if (tacticName === 'Mudanca de Estrategia') {
+            const sel = document.createElement('select');
+            sel.name      = 'description';
+            sel.className = 'form-select';
+            sel.required  = true;
+
+            const defOpt = document.createElement('option');
+            defOpt.value    = '';
+            defOpt.text     = 'Selecione a estratégia de destino';
+            defOpt.disabled = true;
+            if (!prefillDesc) defOpt.selected = true;
+            sel.appendChild(defOpt);
+
+            availableStrategies.forEach(s => {
+                if (s.id === existingStrategy.id) return; // não permite apontar para si mesmo
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.text  = s.name;
+                if (String(s.id) === String(prefillDesc)) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            wrapper.appendChild(sel);
+
+        } else if (tacticName === 'Reuso') {
+            // Select de domínio
+            const sel = document.createElement('select');
+            sel.className = 'form-select';
+            sel.required  = true;
+
+            const defOpt = document.createElement('option');
+            defOpt.value    = '';
+            defOpt.text     = 'Selecione o domínio';
+            defOpt.disabled = true;
+            if (!prefillDomainId) defOpt.selected = true;
+            sel.appendChild(defOpt);
+
+            availableDomains.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.text  = d.name;
+                if (String(d.id) === String(prefillDomainId)) opt.selected = true;
+                sel.appendChild(opt);
+            });
+
+            sel.addEventListener('change', () => { inputDomainId.value = sel.value; });
+
+            // description vazio para Reuso
+            const hiddenDesc = document.createElement('input');
+            hiddenDesc.type  = 'hidden';
+            hiddenDesc.name  = 'description';
+            hiddenDesc.value = '';
+            wrapper.appendChild(hiddenDesc);
+            wrapper.appendChild(sel);
+
+        } else {
+            const inputDesc = document.createElement('input');
+            inputDesc.type      = 'text';
+            inputDesc.name      = 'description';
+            inputDesc.className = 'form-control';
+            inputDesc.value     = prefillDesc || '';
+
+            if (tacticName === 'Apresentacao Sincrona') {
+                inputDesc.placeholder = 'Adicione o link do Google Meet ou Zoom';
+                inputDesc.required    = true;
+            } else {
+                inputDesc.placeholder = 'Adicione uma descrição (opcional)';
+            }
+            wrapper.appendChild(inputDesc);
+        }
+
+        // Botão remover
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type      = 'button';
+        deleteBtn.className = 'btn btn-outline-danger';
+        deleteBtn.innerHTML = '✖';
+        deleteBtn.onclick   = () => { wrapper.remove(); updateOrderNumbers(); };
+        wrapper.appendChild(deleteBtn);
+
+        dropzone.appendChild(wrapper);
+        enableDragAndDrop();
+        updateOrderNumbers();
+    }
+
+    // --- Ordem numérica ---
+    function updateOrderNumbers() {
+        dropzone.querySelectorAll('.sortable-item').forEach((item, i) => {
+            const span = item.querySelector('.order-number');
+            if (span) span.textContent = `${i + 1}º`;
+        });
+    }
+
+    // --- Drag-and-drop interno (reordenar) ---
+    function enableDragAndDrop() {
+        dropzone.querySelectorAll('.sortable-item').forEach(item => {
+            item.addEventListener('dragstart', () => item.classList.add('dragging'));
+            item.addEventListener('dragend',   () => { item.classList.remove('dragging'); updateOrderNumbers(); });
+        });
+
+        dropzone.addEventListener('dragover', e => {
+            e.preventDefault();
+            const after   = getDragAfterElement(dropzone, e.clientY);
+            const dragging = document.querySelector('.dragging');
+            if (!dragging) return;
+            if (after == null) dropzone.appendChild(dragging);
+            else dropzone.insertBefore(dragging, after);
+        });
+    }
+
+    function getDragAfterElement(container, y) {
+        const els = [...container.querySelectorAll('.sortable-item:not(.dragging)')];
+        return els.reduce((closest, child) => {
+            const box    = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            return (offset < 0 && offset > closest.offset)
+                ? { offset, element: child }
+                : closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    // --- Agente IA (revalidação opcional) ---
+    function openAgentAnalysis() {
+        const strategyName  = document.getElementById('name').value;
+        const chosenTactics = Array.from(
+            document.querySelectorAll('#dropzone input[name="tatics"]')
+        ).map(el => el.value);
+
+        if (!strategyName) { alert('Dê um nome à estratégia antes de validar.'); return; }
+        if (chosenTactics.length === 0) { alert('Adicione pelo menos uma tática.'); return; }
+
+        document.getElementById('agentModal').style.display   = 'block';
+        document.getElementById('agentLoading').style.display = 'block';
+        document.getElementById('agentResult').style.display  = 'none';
+
+        fetch('/strategies/orchestrate_validation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: strategyName, tactics: chosenTactics })
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('agentLoading').style.display = 'none';
+            document.getElementById('agentResult').style.display  = 'block';
+
+            const gradeEl    = document.getElementById('agentGrade');
+            const feedbackEl = document.getElementById('agentFeedback');
+            gradeEl.innerText    = data.grade + '/10';
+            feedbackEl.innerText = data.feedback;
+            gradeEl.className    = 'display-6 fw-bold ' + (data.grade >= 7 ? 'text-success' : 'text-danger');
+            document.getElementById('scoreInput').value = data.grade;
+        })
+        .catch(() => { closeModal(); alert('Erro ao contatar o Agente Pedagógico.'); });
+    }
+
+    function closeModal() {
+        document.getElementById('agentModal').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>

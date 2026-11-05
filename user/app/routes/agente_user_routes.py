@@ -24,8 +24,13 @@ def ensure_tutor_chat_table(conn):
                 student_username VARCHAR(100) NOT NULL,
                 sender VARCHAR(20) NOT NULL,
                 message TEXT NOT NULL,
+                session_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+        """)
+        cur.execute("""
+            ALTER TABLE tutor_chat_history
+            ADD COLUMN IF NOT EXISTS session_id INTEGER;
         """)
         conn.commit()
 
@@ -69,13 +74,12 @@ def summarize_preferences():
 
         profiles_text = []
         for s in students_data:
-            name = s.get('name', 'Aluno')
             p_type = s.get('pref_content_type') or 'Não informado'
             p_comm = s.get('pref_communication') or 'Não informado'
             recebe_email = s.get('pref_receive_email')
             txt_email = "Aceita receber emails" if recebe_email else "NÃO aceita emails"
-            
-            profiles_text.append(f"- Aluno {name}: Prefere '{p_type}' via '{p_comm}'. {txt_email}.")
+
+            profiles_text.append(f"- ESTUDANTE: Prefere '{p_type}' via '{p_comm}'. {txt_email}.")
         
         profiles_joined = "\n".join(profiles_text)
         
@@ -167,8 +171,7 @@ def summarize_logged_user():
 
         prompt = f"""
         Você é um assistente pedagógico.
-        Analise os dados do aluno abaixo e raciocine sobre o perfil de estudo:
-        - Nome: {user_data.get('name') or 'Não informado'}
+        Analise os dados de ESTUDANTE abaixo e raciocine sobre o perfil de estudo:
         - Curso: {user_data.get('course') or 'Não informado'}
         - Idade: {user_data.get('age') or 'Não informado'}
         - Tipo de conteúdo preferido: {user_data.get('pref_content_type') or 'Não informado'}
@@ -301,7 +304,7 @@ def generate_student_feedback():
         # 5. Prompt Final
         system_prompt = f"""
         Você é um Mentor Pedagógico Pessoal e Inteligente.
-        O aluno {username} entrou em contato.
+        ESTUDANTE entrou em contato.
 
         PERFIL DO ALUNO:
         - Prefere conteúdo: {prefs.get('pref_content_type', 'Não informado')}
@@ -394,14 +397,23 @@ def get_chat_history():
 
         ensure_tutor_chat_table(conn)
 
+        session_id = request.args.get('session_id')
         history = []
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT sender, message, created_at
-                FROM tutor_chat_history
-                WHERE student_username = %s
-                ORDER BY created_at ASC
-            """, (username,))
+            if session_id:
+                cur.execute("""
+                    SELECT sender, message, created_at
+                    FROM tutor_chat_history
+                    WHERE student_username = %s AND session_id = %s
+                    ORDER BY created_at ASC
+                """, (username, int(session_id)))
+            else:
+                cur.execute("""
+                    SELECT sender, message, created_at
+                    FROM tutor_chat_history
+                    WHERE student_username = %s
+                    ORDER BY created_at ASC
+                """, (username,))
             rows = cur.fetchall()
             for r in rows:
                 history.append({
@@ -432,11 +444,53 @@ def clear_chat_history():
 
         ensure_tutor_chat_table(conn)
 
+        session_id = request.args.get('session_id')
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM tutor_chat_history WHERE student_username = %s", (username,))
+            if session_id:
+                cur.execute(
+                    "DELETE FROM tutor_chat_history WHERE student_username = %s AND session_id = %s",
+                    (username, int(session_id))
+                )
+            else:
+                cur.execute("DELETE FROM tutor_chat_history WHERE student_username = %s", (username,))
             conn.commit()
 
         return jsonify({"status": "cleared"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+
+@agente_user_bp.route('/agent/save_chat_message', methods=['POST'])
+def save_chat_message():
+    """Salva uma mensagem no histórico do chat sem chamar o LLM."""
+    data = request.get_json() or {}
+    username = data.get('username')
+    sender = data.get('sender', 'agent')
+    message = data.get('message', '')
+
+    if not username or not message:
+        return jsonify({"error": "username e message são obrigatórios"}), 400
+
+    conn = None
+    try:
+        db_url = getattr(Config, 'SQLALCHEMY_DATABASE_URI', os.getenv('DATABASE_URL'))
+        conn = create_connection(db_url)
+        if not conn:
+            return jsonify({"error": "DB Error"}), 500
+
+        ensure_tutor_chat_table(conn)
+
+        session_id = data.get('session_id')
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO tutor_chat_history (student_username, sender, message, session_id)
+                VALUES (%s, %s, %s, %s)
+            """, (username, sender[:20], message, session_id))
+            conn.commit()
+
+        return jsonify({"status": "saved"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -480,18 +534,11 @@ def save_session_memory():
 
         ensure_learning_history_table(conn)
 
-        student_name = str(student_id)
-        with conn.cursor() as cur:
-            cur.execute("SELECT name FROM student WHERE student_id = %s", (student_id,))
-            row = cur.fetchone()
-            if row:
-                student_name = row['name'] or str(student_id)
-
         avg_score = round(sum(scores) / len(scores), 1) if scores else 0
         scores_text = f"Notas: {scores}. Média: {avg_score}." if scores else "Sem exercícios avaliados."
         tactics_text = ", ".join(tactics_names) if tactics_names else "Nenhuma tática registrada."
 
-        prompt = f"""Você é um tutor pedagógico. Analise o desempenho do aluno {student_name} nesta sessão:
+        prompt = f"""Você é um tutor pedagógico. Analise o desempenho de ESTUDANTE nesta sessão:
 
 Táticas realizadas: {tactics_text}
 Desempenho nos exercícios: {scores_text}
@@ -573,147 +620,6 @@ def get_learning_history(student_id):
 
     except Exception as e:
         logging.error("Erro ao buscar histórico: %s", str(e))
-        return jsonify({"error": str(e)}), 500
-    finally:
-        if conn:
-            conn.close()
-
-
-def ensure_mastery_table(conn):
-    with conn.cursor() as cur:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS student_mastery (
-                id SERIAL PRIMARY KEY,
-                student_id INTEGER NOT NULL,
-                session_id INTEGER NOT NULL DEFAULT 0,
-                concept TEXT NOT NULL,
-                mastery_pct FLOAT DEFAULT 0,
-                total_attempts INTEGER DEFAULT 0,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE (student_id, session_id, concept)
-            );
-        """)
-        # Migração: adiciona session_id e corrige constraint em tabelas existentes
-        cur.execute("""
-            ALTER TABLE student_mastery
-            ADD COLUMN IF NOT EXISTS session_id INTEGER NOT NULL DEFAULT 0;
-        """)
-        cur.execute("""
-            DO $$ BEGIN
-                IF EXISTS (
-                    SELECT 1 FROM pg_constraint
-                    WHERE conname = 'student_mastery_student_id_concept_key'
-                    AND conrelid = 'student_mastery'::regclass
-                ) THEN
-                    ALTER TABLE student_mastery
-                    DROP CONSTRAINT student_mastery_student_id_concept_key;
-                END IF;
-            END $$;
-        """)
-        cur.execute("""
-            DO $$ BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_constraint
-                    WHERE conname = 'student_mastery_student_id_session_id_concept_key'
-                    AND conrelid = 'student_mastery'::regclass
-                ) THEN
-                    ALTER TABLE student_mastery
-                    ADD CONSTRAINT student_mastery_student_id_session_id_concept_key
-                    UNIQUE (student_id, session_id, concept);
-                END IF;
-            END $$;
-        """)
-        conn.commit()
-
-
-@agente_user_bp.route('/students/<int:student_id>/mastery_update', methods=['POST'])
-def mastery_update(student_id):
-    """Atualiza maestria por conceito (por sessão) usando EMA (60% antigo + 40% novo)."""
-    data = request.get_json() or {}
-    concepts = data.get('concepts', [])
-    session_id = int(data.get('session_id', 0))
-
-    if not concepts:
-        return jsonify({"status": "nothing to update"}), 200
-
-    conn = None
-    try:
-        db_url = getattr(Config, 'SQLALCHEMY_DATABASE_URI', os.getenv('DATABASE_URL'))
-        conn = create_connection(db_url)
-        if not conn:
-            return jsonify({"error": "Falha na conexão com o banco"}), 500
-
-        ensure_mastery_table(conn)
-
-        with conn.cursor() as cur:
-            for c in concepts:
-                concept = str(c.get('concept', '')).strip().lower()
-                correct = int(c.get('correct_count', 0))
-                total = int(c.get('total_count', 1))
-                if not concept or total == 0:
-                    continue
-                new_pct = (correct / total) * 100
-                cur.execute("""
-                    INSERT INTO student_mastery (student_id, session_id, concept, mastery_pct, total_attempts)
-                    VALUES (%s, %s, %s, %s, 1)
-                    ON CONFLICT (student_id, session_id, concept) DO UPDATE SET
-                        mastery_pct = 0.6 * student_mastery.mastery_pct + 0.4 * EXCLUDED.mastery_pct,
-                        total_attempts = student_mastery.total_attempts + 1,
-                        last_updated = CURRENT_TIMESTAMP
-                """, (student_id, session_id, concept, new_pct))
-            conn.commit()
-
-        return jsonify({"status": "updated", "concepts_count": len(concepts)}), 200
-
-    except Exception as e:
-        logging.error("Erro ao atualizar maestria: %s", str(e))
-        if conn:
-            conn.rollback()
-        return jsonify({"error": str(e)}), 500
-    finally:
-        if conn:
-            conn.close()
-
-
-@agente_user_bp.route('/students/<int:student_id>/mastery', methods=['GET'])
-def get_mastery(student_id):
-    """Retorna maestria por conceito do aluno para uma sessão específica."""
-    session_id = request.args.get('session_id')
-    if session_id is None:
-        return jsonify({"mastery": []}), 200
-    session_id = int(session_id)
-
-    conn = None
-    try:
-        db_url = getattr(Config, 'SQLALCHEMY_DATABASE_URI', os.getenv('DATABASE_URL'))
-        conn = create_connection(db_url)
-        if not conn:
-            return jsonify({"error": "Falha na conexão com o banco"}), 500
-
-        ensure_mastery_table(conn)
-
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT concept, mastery_pct, total_attempts, last_updated
-                FROM student_mastery
-                WHERE student_id = %s AND session_id = %s
-                ORDER BY mastery_pct ASC
-            """, (student_id, session_id))
-            rows = cur.fetchall()
-
-        mastery = [
-            {
-                "concept": r['concept'],
-                "mastery_pct": round(r['mastery_pct'], 1),
-                "total_attempts": r['total_attempts'],
-                "last_updated": r['last_updated'].isoformat() if r['last_updated'] else None
-            }
-            for r in rows
-        ]
-        return jsonify({"mastery": mastery}), 200
-
-    except Exception as e:
-        logging.error("Erro ao buscar maestria: %s", str(e))
         return jsonify({"error": str(e)}), 500
     finally:
         if conn:

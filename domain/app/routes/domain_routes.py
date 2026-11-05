@@ -570,3 +570,12 @@ def get_test_scores():
     finally:
         cursor.close()
         conn.close()
+
+
+@domain_bp.route('/uploads/tcle_pdf', methods=['GET'])
+def serve_tcle_pdf():
+    uploads_dir = get_uploads_dir()
+    pdf_filename = 'TCLE_SEP-Agentic.pdf'
+    if not os.path.exists(os.path.join(uploads_dir, pdf_filename)):
+        return jsonify({"error": "TCLE PDF não encontrado"}), 404
+    return send_from_directory(uploads_dir, pdf_filename, mimetype='application/pdf')

@@ -21,18 +21,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const my_id = window.my_id;
 
 
-    // Verificar se o susuatio tem notas extras, se não tiver, exibir mensagem
+    // Verificar se o usuário tem notas extras, se não tiver, exibir mensagem
     let student_extra_note = document.getElementById("student-extra-note-card-created");
     if (!student_extra_note) {
-        document.getElementById("student-extra-note-card").innerHTML = '<em>Sem notas extras atribuidas.</em>';
+        const noteCard = document.getElementById("student-extra-note-card");
+        if (noteCard) noteCard.innerHTML = '<em>Sem notas extras atribuidas.</em>';
     }
 
-    // Verificar se o usuário é estudante e se não tem respostas de exercícios, exibir mensagem
+    // Verificar se o usuário tem respostas de exercícios, se não tiver, exibir mensagem
     let student_answers_card = document.getElementById("student-answers-card-created");
-    console.log("student_answers_card_created: ", student_answers_card);
     if (!student_answers_card) {
-        console.log("student_answers_card>>: ", document.getElementById("student-answers-card"));
-        document.getElementById("student-answers-card").innerHTML = '<em>Sem respostas de exercícios enviadas nesta sessão.</em>';
+        const answersCard = document.getElementById("student-answers-card");
+        if (answersCard) answersCard.innerHTML = '<em>Sem respostas de exercícios enviadas nesta sessão.</em>';
     }
 
     // Variável para armazenar a instância atual da UI do Chat
@@ -155,56 +155,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function randomDelay(maxMs) {
         return new Promise(resolve => setTimeout(resolve, Math.random() * maxMs));
-    }
-
-    function renderMasteryCard(mastery) {
-        const panel = document.getElementById('mastery-panel');
-        if (!panel) return;
-
-        if (!mastery || mastery.length === 0) {
-            panel.style.display = 'none';
-            panel.innerHTML = '';
-            return;
-        }
-
-        const rows = mastery.map(m => {
-            const pct = Math.round(m.mastery_pct);
-            const barClass = pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-danger';
-            return `
-                <div class="mb-2">
-                    <div class="d-flex justify-content-between small fw-semibold">
-                        <span>${m.concept}</span><span>${pct}%</span>
-                    </div>
-                    <div class="progress" style="height:6px">
-                        <div class="progress-bar ${barClass}" role="progressbar" style="width:${pct}%"></div>
-                    </div>
-                </div>`;
-        }).join('');
-
-        panel.style.display = '';
-        panel.innerHTML = `
-            <div class="card border-info">
-                <div class="card-header bg-info text-white fw-bold small py-1">
-                    📊 Sua maestria — atualizada agora
-                </div>
-                <div class="card-body py-2 px-3">${rows}</div>
-            </div>`;
-    }
-
-    function showMasteryLoading() {
-        const panel = document.getElementById('mastery-panel');
-        if (!panel) return;
-        panel.style.display = '';
-        panel.innerHTML = `
-            <div class="card border-info">
-                <div class="card-header bg-info text-white fw-bold small py-1">
-                    📊 Sua maestria
-                </div>
-                <div class="card-body py-2 px-3 text-muted small">
-                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                    Calculando maestria…
-                </div>
-            </div>`;
     }
 
     function _clearProactiveTimer() {
@@ -373,7 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function startCountdown(remainingTime, strategyTactics, tacticName) {
+    function startCountdown(remainingTime, strategyTactics, tacticName, tacticDomainId) {
         clearInterval(countdownInterval);
         // Limpa qualquer estado de loading (spinner da IA) antes de montar a nova tática
         const tacticHereEl = document.getElementById("tatic_here");
@@ -397,7 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Remove os elementos da tática anterior antes de montar a nova
         removerElemento();
 
-        countdownInterval = setInterval(() => {
+        const _tickFn = () => {
             // Evitar auto-avanço se for a tática de "Regra", pois ela tem lógica própria de execução
             const isRegra = (tacticName === "Regra" || tacticName === "Regras");
 
@@ -542,10 +492,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         tatic_here.appendChild(tabContainer);
                         _startProactiveTimer();
 
-                        // ---------- Carregar PDFs ----------
-                        const pdfData = document.getElementById("pdf_data").getAttribute("data-pdfs");
-                        const pdfs = JSON.parse(pdfData);
+                        const _reusoDomainId = tacticDomainId || domain_id;
 
+                        // ---------- Carregar PDFs ----------
                         const pdfContainer = document.getElementById("pdf_container");
                         const _studyTextKey = `reuso_study_text_${session_id}_${my_id}`;
                         const _savedStudyText = localStorage.getItem(_studyTextKey);
@@ -572,16 +521,13 @@ document.addEventListener("DOMContentLoaded", () => {
                             pdfContainer.innerHTML = '';
                             pdfContainer.appendChild(_card);
                         } else {
-                            pdfs.forEach(pdf => {
-                                fetch(`/pdfs/${pdf.id}`, {
-                                    headers: {
-                                        "Authorization": `Bearer ${token}`
-                                    }
-                                })
+                            const _loadPdfs = (pdfs) => {
+                                pdfs.forEach(pdf => {
+                                    fetch(`/pdfs/${pdf.id}`, {
+                                        headers: { "Authorization": `Bearer ${token}` }
+                                    })
                                     .then(response => {
-                                        if (!response.ok) {
-                                            throw new Error("Erro ao baixar PDF");
-                                        }
+                                        if (!response.ok) throw new Error("Erro ao baixar PDF");
                                         return response.blob();
                                     })
                                     .then(blob => {
@@ -592,17 +538,34 @@ document.addEventListener("DOMContentLoaded", () => {
                                         embed.width = "100%";
                                         embed.height = "600px";
                                         embed.className = "mb-3";
-
                                         pdfContainer.appendChild(embed);
                                     })
-                                    .catch(error => {
-                                        console.error("Erro ao carregar PDF: ", error);
-                                    });
-                            });
+                                    .catch(error => console.error("Erro ao carregar PDF: ", error));
+                                });
+                            };
+
+                            if (tacticDomainId) {
+                                fetch(`/domains/${_reusoDomainId}/pdfs`, {
+                                    headers: { "Authorization": `Bearer ${token}` }
+                                })
+                                .then(r => r.json())
+                                .then(pdfs => _loadPdfs(pdfs))
+                                .catch(() => {});
+                            } else {
+                                const pdfDataEl = document.getElementById("pdf_data");
+                                if (pdfDataEl) {
+                                    _loadPdfs(JSON.parse(pdfDataEl.getAttribute("data-pdfs")));
+                                }
+                            }
                         }
 
                         // ----------Carregar Exercícios----------
-                        fetch(`/domains/${domain_id}/exercises`, {
+                        if (!_reusoDomainId) {
+                            reusoExercisesState = false;
+                            const container = document.getElementById("exercise_container");
+                            if (container) container.innerHTML = "<p class='text-muted'>Nenhum domínio configurado para esta tática.</p>";
+                        } else {
+                        fetch(`/domains/${_reusoDomainId}/exercises`, {
                             headers: {
                                 "Authorization": `Bearer ${token}`
                             }
@@ -612,8 +575,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                 reusoExercisesState = data.length > 0;
                                 const container = document.getElementById("exercise_container");
 
-                                if (data.length === 0) {
-                                    container.innerHTML = "<p class='text-muted'>Nenhum exercício encontrado.</p>";
+                                if (!Array.isArray(data) || data.length === 0) {
+                                    container.innerHTML = "<p class='text-muted'>Nenhum exercício encontrado neste domínio.</p>";
                                     return;
                                 }
 
@@ -621,29 +584,97 @@ document.addEventListener("DOMContentLoaded", () => {
                                 const form = document.createElement("form");
                                 form.id = "exerciseForm";
 
-                                console.log("Exercícios carregados:", data);
+                                // Cabeçalho com contador de progresso
+                                const progressBar = document.createElement("div");
+                                progressBar.className = "d-flex justify-content-between align-items-center mb-4 p-3 rounded-3";
+                                progressBar.style.cssText = "background:linear-gradient(135deg,#667eea18,#764ba218);border:1px solid #667eea30;";
+                                progressBar.innerHTML = `
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span style="font-size:1.3rem;">📝</span>
+                                        <span class="fw-semibold text-secondary">${data.length} ${data.length === 1 ? 'questão' : 'questões'}</span>
+                                    </div>
+                                    <span id="progress-count" class="badge rounded-pill fs-6 px-3 py-2" style="background:#667eea;">0 / ${data.length}</span>
+                                `;
+                                form.appendChild(progressBar);
 
-                                // Para cada exercício, cria um bloco com as perguntas
+                                // Letras das alternativas
+                                const _letters = 'ABCDE';
+
+                                // Para cada exercício, cria um card estilizado
                                 data.forEach((ex, index) => {
-                                    const div = document.createElement("div");
-                                    div.className = "mb-3 border rounded p-2 bg-light";
-                                    div.innerHTML = `
-                <p><strong>${index + 1}) ${ex.question}</strong></p>
-                ${ex.options.map((opt, i) => `
-                    <div>
-                        <input type="radio" name="exercise_${ex.id}" value="${i}" required>
-                        ${i + 1}) ${opt}
-                    </div>
-                `).join("")}
-            `;
-                                    form.appendChild(div);
+                                    const card = document.createElement("div");
+                                    card.className = "mb-4";
+                                    card.innerHTML = `
+                                        <div class="card border-0 shadow-sm overflow-hidden">
+                                            <div class="card-header d-flex align-items-start gap-3 py-3 border-0"
+                                                 style="background:linear-gradient(135deg,#667eea18,#764ba218); border-left:4px solid #667eea !important;">
+                                                <span class="badge rounded-circle fw-bold flex-shrink-0 d-flex align-items-center justify-content-center"
+                                                      style="width:34px;height:34px;font-size:0.95rem;background:#667eea;margin-top:1px;">
+                                                    ${index + 1}
+                                                </span>
+                                                <span class="fw-semibold lh-sm pt-1">${ex.question}</span>
+                                            </div>
+                                            <div class="card-body pt-3 pb-2 px-3">
+                                                ${ex.options.map((opt, i) => `
+                                                    <label class="d-flex align-items-center gap-3 p-3 mb-2 rounded-3 border _opt-lbl"
+                                                           style="cursor:pointer;transition:background .15s,border-color .15s;border-color:#dee2e6!important;">
+                                                        <input type="radio" name="exercise_${ex.id}" value="${i}" required class="d-none">
+                                                        <span class="_opt-letter fw-bold flex-shrink-0 rounded-circle d-flex align-items-center justify-content-center"
+                                                              style="width:32px;height:32px;background:#f0f0f0;color:#555;font-size:.85rem;transition:background .15s,color .15s;">
+                                                            ${_letters[i] || i + 1}
+                                                        </span>
+                                                        <span class="flex-grow-1">${opt}</span>
+                                                    </label>
+                                                `).join("")}
+                                            </div>
+                                        </div>
+                                    `;
+                                    form.appendChild(card);
+                                });
+
+                                // Listener de mudança: destaca opção selecionada + atualiza progresso
+                                form.addEventListener("change", e => {
+                                    if (e.target.type !== "radio") return;
+                                    // Remove destaque das opções do mesmo grupo
+                                    form.querySelectorAll(`input[name="${e.target.name}"]`).forEach(r => {
+                                        const lbl = r.closest("._opt-lbl");
+                                        if (lbl) {
+                                            lbl.style.background = "";
+                                            lbl.style.borderColor = "#dee2e6";
+                                            const letter = lbl.querySelector("._opt-letter");
+                                            if (letter) { letter.style.background = "#f0f0f0"; letter.style.color = "#555"; }
+                                        }
+                                    });
+                                    // Destaca a selecionada
+                                    const selLbl = e.target.closest("._opt-lbl");
+                                    if (selLbl) {
+                                        selLbl.style.background = "rgba(102,126,234,.1)";
+                                        selLbl.style.borderColor = "#667eea";
+                                        const selLetter = selLbl.querySelector("._opt-letter");
+                                        if (selLetter) { selLetter.style.background = "#667eea"; selLetter.style.color = "white"; }
+                                    }
+                                    // Atualiza contador de progresso
+                                    const answered = new Set();
+                                    form.querySelectorAll("input[type='radio']:checked").forEach(r => answered.add(r.name));
+                                    const countEl = document.getElementById("progress-count");
+                                    if (countEl) {
+                                        countEl.textContent = `${answered.size} / ${data.length}`;
+                                        countEl.style.background = answered.size === data.length ? "#198754" : "#667eea";
+                                    }
                                 });
 
                                 // Botão de envio e feedback
-                                form.innerHTML += `
-            <button type="submit" class="btn btn-primary mt-3">Enviar respostas</button>
-            <div id="formFeedback" class="mt-2 text-danger"></div>
-        `;
+                                const submitArea = document.createElement("div");
+                                submitArea.innerHTML = `
+                                    <div class="d-grid mt-2">
+                                        <button type="submit" class="btn btn-lg fw-bold py-3"
+                                                style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;">
+                                            📤 Enviar Respostas
+                                        </button>
+                                    </div>
+                                    <div id="formFeedback" class="mt-3 text-center fw-bold"></div>
+                                `;
+                                form.appendChild(submitArea);
 
                                 container.innerHTML = ""; // Limpa qualquer conteúdo anterior
                                 container.appendChild(form); // Insere o formulário
@@ -736,17 +767,6 @@ document.addEventListener("DOMContentLoaded", () => {
                                             console.log("Respostas enviadas:", respData);
                                             _clearProactiveTimer();
 
-                                            // Atualiza maestria em tempo real (paralelo, fire-and-render)
-                                            showMasteryLoading();
-                                            fetch('/orchestrator/agent/update_and_get_mastery', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ student_id: studentId, session_id: session_id })
-                                            })
-                                            .then(r => r.json())
-                                            .then(masteryData => renderMasteryCard(masteryData.mastery || []))
-                                            .catch(err => console.error('Mastery error:', err));
-
                                             if (respData.passed) {
                                                 feedbackEl.className = "mt-2 text-success fw-bold";
                                                 // Limpa dados persistidos ao passar nos exercícios
@@ -793,12 +813,12 @@ document.addEventListener("DOMContentLoaded", () => {
                                                     };
 
                                                     if (!_hasPlan) {
-                                                        // Primeiro exercício concluído: planeja a sessão com maestria real
+                                                        // Reuso concluído: planeja as táticas restantes com as notas reais
                                                         showAdaptiveLoadingState();
                                                         fetch('/orchestrator/agent/replan_session', {
                                                             method: 'POST',
                                                             headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ student_id: my_id, session_id: session_id, is_replan: false })
+                                                            body: JSON.stringify({ student_id: my_id, session_id: session_id, is_replan: false, completed_tactic_index: _completedIdx })
                                                         })
                                                         .then(r => r.json())
                                                         .then(planData => {
@@ -982,10 +1002,11 @@ document.addEventListener("DOMContentLoaded", () => {
                                 console.error("Erro ao carregar exercícios:", err);
                                 reusoExercisesState = false;
                             });
+                        } // end exercises fetch block
 
 
                         // ---------- Carregar Vídeos ----------
-                        fetch(`/domains/${domain_id}/videos`, {
+                        fetch(`/domains/${_reusoDomainId}/videos`, {
                             headers: {
                                 "Authorization": `Bearer ${token}`
                             }
@@ -1156,7 +1177,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-        }, 1000);
+        };
+        if (timeLeft > 0) _tickFn(); // Build tactic UI immediately — no 1-second delay on first render
+        countdownInterval = setInterval(_tickFn, 1000);
     }
 
     function convertToEmbedUrl(url) {
@@ -1298,14 +1321,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
 
-                    // Restaura maestria ao recarregar a página (leitura simples, sem LLM)
-                    if (my_id) {
-                        fetch(`/orchestrator/student/mastery?student_id=${my_id}&session_id=${session_id}`)
-                        .then(r => r.json())
-                        .then(masteryData => renderMasteryCard(masteryData.mastery || []))
-                        .catch(err => console.error('Mastery restore error:', err));
-                    }
-
                     const nameEl = document.getElementById("tacticName");
                     if (nameEl) nameEl.innerText = data.tactic.name;
                     taticDescription(data.tactic.description || "Nenhuma descrição disponível");
@@ -1360,7 +1375,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     .catch(() => fetchCurrentTactic(session_id));
                             }
                         } else {
-                            startCountdown(data.remaining_time, data.strategy_tactics, data.tactic.name);
+                            startCountdown(data.remaining_time, data.strategy_tactics, data.tactic.name, data.tactic.domain_id);
                         }
                     }
                 } else if (data.session_status === 'student_finished') {
@@ -1420,15 +1435,30 @@ document.addEventListener("DOMContentLoaded", () => {
     if (endSessionBtn) {
         endSessionBtn.addEventListener("click", () => {
             if (confirm("Tem certeza que deseja encerrar a sessão?")) {
+                endSessionBtn.disabled = true;
+                endSessionBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Encerrando...';
                 fetch(`/sessions/end/${session_id}`)
                     .then(response => {
                         if (response.ok) {
-                            location.reload();
+                            endSessionBtn.innerHTML = '<i class="bi bi-stop-circle me-2"></i>Sessão Encerrada';
+                            const startBtn = document.getElementById("startSessionBtn");
+                            if (startBtn) startBtn.classList.remove("d-none");
+                            const statusPill = document.querySelector('.status-in-progress');
+                            if (statusPill) {
+                                statusPill.className = 'status-pill status-finished';
+                                statusPill.innerHTML = '<i class="bi bi-check-circle-fill" style="font-size:0.7rem;"></i> Encerrada';
+                            }
                         } else {
+                            endSessionBtn.disabled = false;
+                            endSessionBtn.innerHTML = '<i class="bi bi-stop-circle me-2"></i>Encerrar Sessão';
                             alert("Erro ao encerrar a sessão.");
                         }
                     })
-                    .catch(() => alert("Erro ao tentar encerrar a sessão."));
+                    .catch(() => {
+                        endSessionBtn.disabled = false;
+                        endSessionBtn.innerHTML = '<i class="bi bi-stop-circle me-2"></i>Encerrar Sessão';
+                        alert("Erro ao tentar encerrar a sessão.");
+                    });
             }
         });
     }
@@ -1485,17 +1515,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ enabled: enabled })
             })
-            .then(r => r.json())
-            .then(() => {
-                adaptiveTacticEnabled = enabled;
-                const statusEl = document.getElementById("adaptive-tactic-status");
-                if (statusEl) {
-                    statusEl.textContent = enabled
-                        ? "Ativado: a IA escolhe a próxima tática para cada aluno."
-                        : "Desativado: alunos seguem a ordem normal das táticas.";
+            .then(r => {
+                if (r.ok) {
+                    adaptiveTacticEnabled = enabled;
+                    const statusEl = document.getElementById("adaptive-tactic-status");
+                    if (statusEl) {
+                        statusEl.textContent = enabled
+                            ? "Ativado: a IA escolhe a próxima tática para cada aluno."
+                            : "Desativado: alunos seguem a ordem normal das táticas.";
+                    }
+                } else {
+                    console.error("Erro ao atualizar tática adaptativa:", r.status);
+                    adaptiveTacticSwitch.checked = !enabled;
                 }
             })
-            .catch(err => console.error("Erro ao atualizar tática adaptativa:", err));
+            .catch(err => {
+                console.error("Erro ao atualizar tática adaptativa:", err);
+                adaptiveTacticSwitch.checked = !enabled;
+            });
         });
     }
 });

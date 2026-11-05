@@ -1,15 +1,36 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
-# from wsgi import login_bp
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, send_file
 from requests.exceptions import RequestException
+from datetime import datetime, timezone, timedelta
+
+BRT = timezone(timedelta(hours=-3))
 import requests
+import io
 from .auth import token_required
-from .services_routs import USER_URL
+from .services_routs import USER_URL, DOMAIN_URL
 
 student_bp = Blueprint("student", __name__)
+
+@student_bp.route('/tcle/pdf', methods=['GET'])
+def download_tcle_pdf():
+    try:
+        resp = requests.get(f"{DOMAIN_URL}/uploads/tcle_pdf", timeout=15)
+        if resp.status_code == 200:
+            return send_file(
+                io.BytesIO(resp.content),
+                mimetype='application/pdf',
+                download_name='TCLE_SEP-Agentic.pdf'
+            )
+        return "PDF não disponível", 404
+    except Exception as e:
+        return str(e), 500
+
 
 @student_bp.route('/students/create', methods=['POST', 'GET'])
 def create_students():
     if request.method == 'POST':
+        if request.form.get('tcle_aceito') != 'sim':
+            return render_template("./user/create_student.html", error_tcle="Você deve aceitar o TCLE para realizar o cadastro.")
+
         # Get the form data
         name = request.form["name"]
         age = request.form["age"]
@@ -18,26 +39,25 @@ def create_students():
         email = request.form["email"]
         username = request.form["username"]
         password = request.form["password"]
-        # --- NOVOS CAMPOS ---
-        # Usa .get() para evitar erro caso o campo não venha (embora o 'required' no HTML ajude)
         pref_content_type = request.form.get("pref_content_type")
         pref_communication = request.form.get("pref_communication")
-        
-        # Checkbox HTML: Se marcado envia o valor, se desmarcado não envia nada.
-        # Estamos convertendo para booleano Python.
         pref_receive_email = True if request.form.get("pref_receive_email") == 'true' else False
 
         student = {
-            "name": name, 
-            "age": age, 
-            "course": course, 
-            "type": type, 
-            'email': email, 
-            "username": username, 
+            "name": name,
+            "age": age,
+            "course": course,
+            "type": type,
+            "email": email,
+            "username": username,
             "password": password,
-            "pref_content_type": pref_content_type,   # Novo
-            "pref_communication": pref_communication, # Novo
-            "pref_receive_email": pref_receive_email  # Novo
+            "pref_content_type": pref_content_type,
+            "pref_communication": pref_communication,
+            "pref_receive_email": pref_receive_email,
+            "tcle_data_aceite": datetime.now(BRT).isoformat(),
+            "tcle_ip": request.remote_addr,
+            "tcle_user_agent": request.headers.get("User-Agent", ""),
+            "tcle_versao": "1.0",
         }
         
         try:

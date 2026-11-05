@@ -3,70 +3,369 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Criar Sessão de Ensino</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cadastro de Professor — SEP_IA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { background: #f0f2f5; font-family: system-ui, -apple-system, sans-serif; }
+
+        /* ── Hero ── */
+        .register-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2.5rem 1.5rem 5rem;
+            color: white;
+            text-align: center;
+            position: relative;
+        }
+        .hero-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 1rem;
+        }
+
+        /* ── Main card ── */
+        .main-card {
+            margin-top: -3rem;
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.11);
+            background: white;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Section label ── */
+        .section-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.9px;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 1.1rem;
+        }
+        .section-divider { border: none; border-top: 1px solid #f3f4f6; margin: 1.5rem 0; }
+
+        /* ── Form controls ── */
+        .form-label { font-size: 0.83rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 1.5px solid #e5e7eb;
+            padding: 0.65rem 1rem;
+            font-size: 0.93rem;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+        }
+        .form-control.is-invalid { border-color: #dc2626; }
+
+        /* ── TCLE card ── */
+        .tcle-card {
+            border-radius: 14px;
+            border: 2px solid #fbbf24;
+            overflow: hidden;
+            margin-bottom: 1.75rem;
+        }
+        .tcle-header {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            padding: 1rem 1.25rem;
+            color: white;
+        }
+        .tcle-header h5 { font-size: 0.95rem; font-weight: 700; margin: 0 0 2px; }
+        .tcle-header small { font-size: 0.78rem; opacity: 0.8; }
+        .tcle-body { padding: 1.25rem; }
+        .tcle-scroll {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 16px 20px;
+            background: #f9fafb;
+            font-size: 13px;
+            line-height: 1.65;
+            margin-bottom: 1rem;
+        }
+        .tcle-scroll h6 {
+            color: #1e40af;
+            font-weight: 700;
+            margin-top: 14px;
+            margin-bottom: 4px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .tcle-scroll h6:first-child { margin-top: 0; }
+        .tcle-scroll p, .tcle-scroll ul { margin-bottom: 8px; }
+        .tcle-scroll::-webkit-scrollbar { width: 5px; }
+        .tcle-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+        .tcle-check-box {
+            background: #fefce8;
+            border-left: 4px solid #eab308;
+            border-radius: 10px;
+            padding: 0.9rem 1rem;
+        }
+        .tcle-note { font-size: 0.72rem; color: #9ca3af; text-align: center; margin: 0.5rem 0 0; }
+
+        /* ── Buttons ── */
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.8rem;
+            font-weight: 600;
+            font-size: 0.97rem;
+            width: 100%;
+            transition: opacity 0.18s, transform 0.15s;
+        }
+        .btn-submit:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); color: white; }
+        .btn-submit:disabled { opacity: 0.5; color: white; }
+
+        .btn-secondary-outline {
+            border: 1.5px solid #e5e7eb;
+            color: #6b7280;
+            background: white;
+            border-radius: 12px;
+            padding: 0.7rem;
+            font-size: 0.9rem;
+            width: 100%;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .btn-secondary-outline:hover { background: #f9fafb; border-color: #d1d5db; color: #374151; }
+
+        .btn-back {
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            position: absolute;
+            top: 1rem;
+            left: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: color 0.15s;
+        }
+        .btn-back:hover { color: white; }
+
+        .alert-info-custom {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1d4ed8;
+            border-radius: 10px;
+            padding: 0.7rem 1rem;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            border-radius: 10px;
+            padding: 0.7rem 1rem;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6 mt-5">
-                <h1 class="mb-4 text-center">Insira as Informações do novo Professor</h1>
 
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Nome</label>
-                        <input type="text" class="form-control" id="name" name="name"
-                            value="{{ request.form.get('name', '') }}" placeholder="Digite o nome" required>
-                    </div>
+<!-- Hero -->
+<div class="register-hero">
+    <a href="/" class="btn-back"><i class="bi bi-arrow-left"></i>Voltar</a>
+    <div class="hero-avatar">👨‍🏫</div>
+    <h2 class="fw-bold mb-1" style="font-size:1.5rem;">Cadastro de Professor</h2>
+    <p style="font-size:0.88rem;opacity:0.85;margin:0;">Crie sua conta para gerenciar sessões no SEP_IA</p>
+</div>
 
-                    <div class="mb-3">
-                        <label for="age" class="form-label">Idade</label>
-                        <input type="number" class="form-control" id="age" name="age"
-                            value="{{ request.form.get('age', '') }}" placeholder="Digite a idade" required>
-                    </div>
+<div class="container py-4" style="max-width:680px;">
+<div class="main-card p-4">
 
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="text" class="form-control" id="email" name="email"
-                            value="{{ request.form.get('email', '') }}" placeholder="Digite o seu email" required>
-                    </div>
+<form method="POST" id="registerForm">
 
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control is-invalid" id="username" name="username"
-                            value="{{ request.form.get('username', '') }}" required>
+    <!-- TCLE -->
+    <div class="tcle-card">
+        <div class="tcle-header">
+            <h5><i class="bi bi-file-earmark-text-fill me-2"></i>Termo de Consentimento Livre e Esclarecido (TCLE)</h5>
+            <small>Pesquisa: Sistema Educacional Personalizado baseado em Agentes de IA (SEP-Agentic)</small>
+        </div>
+        <div class="tcle-body">
+            <div class="alert-info-custom">
+                <i class="bi bi-info-circle-fill" style="flex-shrink:0;margin-top:1px;"></i>
+                <span><strong>Antes de se cadastrar</strong>, leia atentamente o termo abaixo. Sua participação é voluntária e os dados coletados serão usados em pesquisa de Trabalho de Conclusão de Curso da UFAL.</span>
+            </div>
 
-                        {% if error %}
-                        <div class="invalid-feedback">
-                            {{ error }}
-                        </div>
-                        {% endif %}
-                    </div>
+            <a href="/tcle/pdf" target="_blank"
+               style="display:inline-flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:#2563eb;text-decoration:none;border:1.5px solid #bfdbfe;border-radius:8px;padding:5px 12px;margin-bottom:1rem;transition:background 0.15s;"
+               onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='transparent'">
+                <i class="bi bi-download"></i> Baixar TCLE completo em PDF
+            </a>
 
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Senha</label>
-                        <input type="password" class="form-control" id="password" name="password"
-                            value="{{ request.form.get('password', '') }}" placeholder="Digite a senha" required>
-                    </div>
+            <div class="tcle-scroll">
+                <h6>1. Objetivos da pesquisa</h6>
+                <p>Esta pesquisa tem como objetivo avaliar o uso de um sistema educacional personalizado baseado em
+                agentes de inteligência artificial (SEP-Agentic) por estudantes de graduação, verificando seu
+                impacto sobre a experiência de aprendizagem e a percepção de personalização do ensino.</p>
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">Criar Professor</button>
-                        <a href="/teachers" class="btn btn-secondary">Ver Todos os Professores</a>
-                    </div>
-                </form>
-                <div class="col-md-12 mt-4 text-center">
-                    <a href="/" class="btn btn-secondary">Voltar Para o Home Page</a>
+                <h6>2. Procedimentos</h6>
+                <p>Caso aceite participar, você irá:</p>
+                <ul>
+                    <li>Responder a um questionário inicial (5 a 10 minutos);</li>
+                    <li>Cadastrar-se no sistema e utilizá-lo em sessões de estudo;</li>
+                    <li>Responder a um questionário final sobre sua experiência (5 a 10 minutos).</li>
+                </ul>
+                <p>A participação total leva cerca de 60 a 90 minutos e pode ser feita remotamente.</p>
+
+                <h6>3. Sobre o sistema e o uso de IA</h6>
+                <p>O SEP-Agentic utiliza agentes de inteligência artificial para personalizar o ensino. Para gerar
+                respostas, feedbacks e materiais, o sistema integra-se com a API da empresa <strong>Groq Inc.</strong>
+                (norte-americana), utilizando o modelo Llama 3.3.</p>
+                <p><strong>Transferência internacional:</strong> parte das informações geradas durante o uso do
+                sistema (suas respostas a exercícios, dúvidas e contextos pedagógicos) é enviada aos servidores da
+                Groq Inc., localizados fora do Brasil.</p>
+                <p><strong>Proteção:</strong> antes de qualquer envio à API externa, dados pessoais identificadores
+                (nome real, e-mail) são removidos ou substituídos por códigos não identificáveis. As políticas
+                atuais da Groq estabelecem que dados enviados via API não são usados para treinamento de modelos.</p>
+
+                <h6>4. Riscos</h6>
+                <p>Esta pesquisa apresenta riscos mínimos: cansaço por responder questionários, possível
+                constrangimento ao refletir sobre dificuldades pessoais, e baixo risco de quebra de sigilo no
+                tráfego de dados (mitigado por HTTPS, criptografia de senhas e pseudonimização). Modelos de IA
+                podem ocasionalmente gerar respostas imprecisas — você não é obrigado(a) a seguir tais orientações.</p>
+
+                <h6>5. Benefícios</h6>
+                <ul>
+                    <li>Acesso a uma ferramenta educacional personalizada;</li>
+                    <li>Recebimento de feedback automático em exercícios;</li>
+                    <li>Recomendações de materiais adaptados ao seu perfil.</li>
+                </ul>
+
+                <h6>6. Confidencialidade e LGPD</h6>
+                <p>Em conformidade com a Lei nº 13.709/2018 (LGPD) e a Resolução CNS nº 466/2012, sua identidade
+                será mantida em sigilo absoluto. Os dados serão usados exclusivamente para esta pesquisa,
+                apresentados de forma agregada e anônima, e mantidos por 5 anos antes do descarte seguro.</p>
+                <p>Você tem direito de acessar, corrigir ou solicitar a exclusão de seus dados, e de revogar este
+                consentimento a qualquer momento.</p>
+
+                <h6>7. Participação voluntária</h6>
+                <p>Sua participação é voluntária. Você pode se recusar a participar ou retirar seu consentimento a
+                qualquer momento, sem penalidade ou prejuízo na sua relação com a UFAL.</p>
+
+                <h6>8. Contatos</h6>
+                <p><strong>Pesquisador responsável:</strong> ARTURO HERNANDEZ DOMINGUEZ — arturohd@ic.ufal.br<br>
+                <strong>Pesquisador assistente:</strong> Kelvin Santos de Almeida Lima — (82) 99339-7611<br>
+                <strong>CEP/UFAL:</strong> cep@ufal.br</p>
+            </div>
+
+            {% if error_tcle %}
+            <div class="alert-error mb-3">
+                <i class="bi bi-exclamation-triangle-fill"></i> {{ error_tcle }}
+            </div>
+            {% endif %}
+
+            <div class="tcle-check-box">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="tcleCheck" name="tcle_aceito" value="sim">
+                    <label class="form-check-label" for="tcleCheck" style="font-size:0.88rem;">
+                        <strong>Li, entendi e concordo</strong> em participar voluntariamente desta pesquisa
+                        nos termos do TCLE acima. Estou ciente de que posso retirar meu consentimento a
+                        qualquer momento e que meus dados serão tratados conforme a LGPD.
+                    </label>
                 </div>
             </div>
+            <p class="tcle-note">Ao marcar a caixa acima, o sistema registrará a data, hora e dispositivo da aceitação, em conformidade com a Resolução CNS nº 466/2012.</p>
+        </div>
+    </div>
+    <!-- /TCLE -->
+
+    <hr class="section-divider">
+
+    <!-- Dados pessoais -->
+    <p class="section-label"><i class="bi bi-person-lines-fill"></i>Informações Pessoais</p>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-sm-6">
+            <label for="name" class="form-label">Nome completo</label>
+            <input type="text" class="form-control" id="name" name="name"
+                value="{{ request.form.get('name', '') }}" placeholder="Digite seu nome" required>
+        </div>
+        <div class="col-12 col-sm-6">
+            <label for="email" class="form-label">E-mail</label>
+            <input type="email" class="form-control" id="email" name="email"
+                value="{{ request.form.get('email', '') }}" placeholder="seu@email.com" required>
+        </div>
+        <div class="col-12 col-sm-6">
+            <label for="age" class="form-label">Idade</label>
+            <input type="number" class="form-control" id="age" name="age"
+                value="{{ request.form.get('age', '') }}" placeholder="Ex: 35" min="1" max="120" required>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq"
-        crossorigin="anonymous"></script>
-</body>
+    <hr class="section-divider">
 
+    <!-- Credenciais -->
+    <p class="section-label"><i class="bi bi-lock"></i>Credenciais de Acesso</p>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6">
+            <label for="username" class="form-label">Usuário</label>
+            <input type="text" class="form-control {% if error %}is-invalid{% endif %}"
+                id="username" name="username"
+                value="{{ request.form.get('username', '') }}" placeholder="Escolha um usuário" required>
+            {% if error %}
+            <div class="invalid-feedback">{{ error }}</div>
+            {% endif %}
+        </div>
+        <div class="col-12 col-sm-6">
+            <label for="password" class="form-label">Senha</label>
+            <input type="password" class="form-control" id="password" name="password"
+                placeholder="Escolha uma senha" required>
+        </div>
+    </div>
+
+    <!-- Ações -->
+    <div class="d-flex flex-column gap-2">
+        <button type="submit" class="btn-submit" id="submitBtn" disabled>
+            <i class="bi bi-person-check-fill me-2"></i>Criar Conta de Professor
+        </button>
+        <a href="/" class="btn-secondary-outline">
+            <i class="bi bi-arrow-left me-1"></i>Voltar para o início
+        </a>
+    </div>
+
+</form>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const tcleCheck = document.getElementById('tcleCheck');
+    const submitBtn = document.getElementById('submitBtn');
+    tcleCheck.addEventListener('change', function () {
+        submitBtn.disabled = !this.checked;
+    });
+</script>
+</body>
 </html>

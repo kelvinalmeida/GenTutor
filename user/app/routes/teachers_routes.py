@@ -22,18 +22,37 @@ def create_teacher():
         if not request.is_json:
              return jsonify({"error": "Content-Type must be application/json"}), 415
 
+        # Migração automática das colunas de TCLE
+        for col_def in [
+            "tcle_data_aceite TIMESTAMP",
+            "tcle_ip VARCHAR(60)",
+            "tcle_user_agent TEXT",
+            "tcle_versao VARCHAR(20)",
+        ]:
+            try:
+                cursor.execute(f"ALTER TABLE teacher ADD COLUMN IF NOT EXISTS {col_def};")
+                conn.commit()
+            except Exception:
+                conn.rollback()
+
         name = request.json["name"]
         age = request.json["age"]
         type_user = "teacher"
         email = request.json["email"]
         username = request.json["username"]
         password = request.json["password"]
+        tcle_data_aceite = request.json.get("tcle_data_aceite")
+        tcle_ip = request.json.get("tcle_ip")
+        tcle_user_agent = request.json.get("tcle_user_agent")
+        tcle_versao = request.json.get("tcle_versao", "1.0")
 
         query = """
-            INSERT INTO teacher (name, age, type, email, username, password_hash)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO teacher (name, age, type, email, username, password_hash,
+                                 tcle_data_aceite, tcle_ip, tcle_user_agent, tcle_versao)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(query, (name, age, type_user, email, username, password))
+        cursor.execute(query, (name, age, type_user, email, username, password,
+                               tcle_data_aceite, tcle_ip, tcle_user_agent, tcle_versao))
         conn.commit()
 
         cursor.close()

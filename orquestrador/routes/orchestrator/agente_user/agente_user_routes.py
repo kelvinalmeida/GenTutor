@@ -163,8 +163,12 @@ def ask_tutor(current_user):
 @token_required
 def get_tutor_chat_history(current_user):
     username = current_user.get('username') if isinstance(current_user, dict) else current_user
+    session_id = request.args.get('session_id')
     try:
-        resp = requests.get(f"{USER_URL}/agent/chat_history", params={'username': username})
+        params = {'username': username}
+        if session_id:
+            params['session_id'] = session_id
+        resp = requests.get(f"{USER_URL}/agent/chat_history", params=params)
         if resp.status_code == 200:
             return jsonify(resp.json()), 200
         return jsonify({"error": "Failed to fetch history"}), resp.status_code
@@ -175,8 +179,12 @@ def get_tutor_chat_history(current_user):
 @token_required
 def delete_tutor_chat_history(current_user):
     username = current_user.get('username') if isinstance(current_user, dict) else current_user
+    session_id = request.args.get('session_id')
     try:
-        resp = requests.delete(f"{USER_URL}/agent/chat_history", params={'username': username})
+        params = {'username': username}
+        if session_id:
+            params['session_id'] = session_id
+        resp = requests.delete(f"{USER_URL}/agent/chat_history", params=params)
         if resp.status_code == 200:
             return jsonify(resp.json()), 200
         return jsonify({"error": "Failed to delete history"}), resp.status_code
