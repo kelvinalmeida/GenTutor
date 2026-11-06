@@ -191,6 +191,110 @@ document.addEventListener("DOMContentLoaded", () => {
         hideAdaptiveReasoning();
     }
 
+    // ── Renderização do material gerado pela IA (Markdown → HTML) ──
+    // Todo o texto é escapado antes da formatação, então nenhum HTML vindo da IA é executado.
+    function _escapeHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function _mdInline(s) {
+        // s já está escapado; códigos inline são protegidos da formatação de negrito/itálico
+        const codes = [];
+        s = s.replace(/`([^`]+)`/g, (_, c) => { codes.push(c); return `\u0000${codes.length - 1}\u0000`; });
+        s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+             .replace(/__(.+?)__/g, '<strong>$1</strong>')
+             .replace(/(^|[^*\w])\*(?!\s)([^*]+?)\*(?!\w)/g, '$1<em>$2</em>')
+             .replace(/(^|[^_\w])_(?!\s)([^_]+?)_(?!\w)/g, '$1<em>$2</em>')
+             .replace(/\*{2,}/g, '');  // asteriscos soltos que sobraram
+        return s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${codes[+i]}</code>`);
+    }
+
+    function renderStudyMarkdown(text) {
+        const lines = _escapeHtml(String(text || '').replace(/\r\n?/g, '\n')).split('\n');
+        const out = [];
+        let para = [], list = null, quote = [];
+
+        const flushPara = () => { if (para.length) { out.push(`<p>${_mdInline(para.join('<br>'))}</p>`); para = []; } };
+        const flushList = () => {
+            if (list) { out.push(`<${list.type}>${list.items.map(i => `<li>${_mdInline(i)}</li>`).join('')}</${list.type}>`); list = null; }
+        };
+        const flushQuote = () => { if (quote.length) { out.push(`<blockquote><p>${_mdInline(quote.join('<br>'))}</p></blockquote>`); quote = []; } };
+        const flushAll = () => { flushPara(); flushList(); flushQuote(); };
+        const isTableRow = (l) => /^\s*\|.*\|\s*$/.test(l);
+        const cells = (l) => l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const t = line.trim();
+
+            // Bloco de código ```
+            if (t.startsWith('```')) {
+                flushAll();
+                const code = [];
+                i++;
+                while (i < lines.length && !lines[i].trim().startsWith('```')) { code.push(lines[i]); i++; }
+                out.push(`<pre><code>${code.join('\n')}</code></pre>`);
+                continue;
+            }
+            if (!t) { flushAll(); continue; }
+
+            // Tabela | a | b |
+            if (isTableRow(line) && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i + 1])) {
+                flushAll();
+                const head = cells(line);
+                i += 2;
+                const rows = [];
+                while (i < lines.length && isTableRow(lines[i])) { rows.push(cells(lines[i])); i++; }
+                i--;
+                out.push(`<div class="table-responsive"><table><thead><tr>${head.map(h => `<th>${_mdInline(h)}</th>`).join('')}</tr></thead>`
+                    + `<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${_mdInline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+                continue;
+            }
+
+            let m;
+            if ((m = t.match(/^(#{1,6})\s+(.*?)\s*#*$/))) {
+                flushAll();
+                const lvl = Math.max(m[1].length, 2); // # vira h2 para não competir com o título do cartão
+                out.push(`<h${lvl}>${_mdInline(m[2].replace(/\*\*/g, ''))}</h${lvl}>`);
+            } else if (/^([-*_])(\s*\1){2,}$/.test(t)) {
+                flushAll(); out.push('<hr>');
+            } else if ((m = t.match(/^&gt;\s?(.*)$/))) {
+                flushPara(); flushList(); quote.push(m[1]);
+            } else if ((m = t.match(/^[-*+•]\s+(.*)$/))) {
+                flushPara(); flushQuote();
+                if (!list || list.type !== 'ul') { flushList(); list = { type: 'ul', items: [] }; }
+                list.items.push(m[1]);
+            } else if ((m = t.match(/^\d+[.)]\s+(.*)$/))) {
+                flushPara(); flushQuote();
+                if (!list || list.type !== 'ol') { flushList(); list = { type: 'ol', items: [] }; }
+                list.items.push(m[1]);
+            } else if (list && /^\s{2,}/.test(line)) {
+                list.items[list.items.length - 1] += ' ' + t;  // continuação do item da lista
+            } else {
+                flushList(); flushQuote(); para.push(t);
+            }
+        }
+        flushAll();
+        return out.join('\n');
+    }
+
+    function buildStudyCard(text, opts = {}) {
+        const card = document.createElement('div');
+        card.className = 'study-card shadow-sm mb-3';
+        card.innerHTML = `
+            <div class="study-card-header">
+                <div class="study-icon">${opts.icon || '📘'}</div>
+                <div>
+                    <div class="study-title">${_escapeHtml(opts.title || 'Material de Revisão Personalizado')}</div>
+                    <div class="study-subtitle">${_escapeHtml(opts.subtitle || 'Leia este material antes de tentar novamente.')}</div>
+                </div>
+            </div>
+            <div class="study-material">${renderStudyMarkdown(text)}</div>`;
+        return card;
+    }
+
     function randomDelay(maxMs) {
         return new Promise(resolve => setTimeout(resolve, Math.random() * maxMs));
     }
@@ -263,14 +367,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     card.remove();
                     if (!aiData.study_text) return;
                     localStorage.setItem(`reuso_study_text_${session_id}_${my_id}`, aiData.study_text);
-                    const newCard = document.createElement('div');
-                    newCard.className = 'card border-primary shadow-sm mb-3';
-                    newCard.innerHTML = `
-                        <div class="card-header bg-primary text-white fw-bold">📚 Exemplo Personalizado</div>
-                        <div class="card-body">
-                            <p class="text-muted small mb-3">Gerado especialmente para você com base no conteúdo desta sessão.</p>
-                            <div style="white-space: pre-wrap; line-height: 1.8;">${aiData.study_text}</div>
-                        </div>`;
+                    const newCard = buildStudyCard(aiData.study_text, {
+                        icon: '📚',
+                        title: 'Exemplo Personalizado',
+                        subtitle: 'Gerado especialmente para você com base no conteúdo desta sessão.',
+                    });
                     pdfContainer.innerHTML = '';
                     pdfContainer.appendChild(newCard);
                 })
@@ -539,23 +640,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         if (_savedStudyText) {
                             // Restaura o texto gerado pela IA em tentativa anterior
-                            const _card = document.createElement('div');
-                            _card.className = 'card border-warning shadow-sm mb-3';
-                            const _cardHeader = document.createElement('div');
-                            _cardHeader.className = 'card-header bg-warning text-dark fw-bold';
-                            _cardHeader.textContent = 'Material de Revisão Personalizado';
-                            const _cardBody = document.createElement('div');
-                            _cardBody.className = 'card-body';
-                            const _hint = document.createElement('p');
-                            _hint.className = 'text-muted small mb-3';
-                            _hint.textContent = 'Leia este material antes de tentar novamente.';
-                            const _textDiv = document.createElement('div');
-                            _textDiv.style.cssText = 'white-space: pre-wrap; line-height: 1.8;';
-                            _textDiv.textContent = _savedStudyText;
-                            _cardBody.appendChild(_hint);
-                            _cardBody.appendChild(_textDiv);
-                            _card.appendChild(_cardHeader);
-                            _card.appendChild(_cardBody);
+                            const _card = buildStudyCard(_savedStudyText);
                             pdfContainer.innerHTML = '';
                             pdfContainer.appendChild(_card);
                         } else {
@@ -996,28 +1081,9 @@ document.addEventListener("DOMContentLoaded", () => {
                                                     }
 
                                                     if (pdfContainer) {
-                                                        const card = document.createElement('div');
-                                                        card.className = 'card border-warning shadow-sm mb-3';
-
-                                                        const cardHeader = document.createElement('div');
-                                                        cardHeader.className = 'card-header bg-warning text-dark fw-bold';
-                                                        cardHeader.textContent = 'Material de Revisão Personalizado';
-
-                                                        const cardBody = document.createElement('div');
-                                                        cardBody.className = 'card-body';
-
-                                                        const hint = document.createElement('p');
-                                                        hint.className = 'text-muted small mb-3';
-                                                        hint.textContent = 'Leia este material antes de tentar novamente.';
-
-                                                        const textDiv = document.createElement('div');
-                                                        textDiv.style.cssText = 'white-space: pre-wrap; line-height: 1.8;';
-                                                        textDiv.textContent = aiData.study_text || 'Não foi possível gerar o material. Tente novamente.';
-
-                                                        cardBody.appendChild(hint);
-                                                        cardBody.appendChild(textDiv);
-                                                        card.appendChild(cardHeader);
-                                                        card.appendChild(cardBody);
+                                                        const card = buildStudyCard(
+                                                            aiData.study_text || 'Não foi possível gerar o material. Tente novamente.'
+                                                        );
                                                         pdfContainer.innerHTML = '';
                                                         pdfContainer.appendChild(card);
                                                     }
