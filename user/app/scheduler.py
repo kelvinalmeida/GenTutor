@@ -10,7 +10,7 @@ CONTROL_URL = 'http://agente_sessao:5001'
 DOMAIN_URL = 'http://domain:5004'
 STRATEGIES_URL = 'http://strategies:5003'
 
-PROACTIVE_COOLDOWN_MINUTES = 5
+PROACTIVE_COOLDOWN_MINUTES = 10  # TCC 4.4.3: uma dica a cada dez minutos
 
 
 def _ensure_tables(conn):
@@ -100,13 +100,13 @@ Gere um MINI-CONTEÚDO EDUCATIVO (máximo 150 palavras) que ajude o estudante a 
 
     try:
         resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Você escreve mini-conteúdos educativos claros e didáticos. Nunca revela gabaritos."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.5,
-            max_tokens=250
+            max_tokens=1200
         )
         return (resp.choices[0].message.content or "").strip()
     except Exception as e:

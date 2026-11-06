@@ -54,9 +54,9 @@ def create_app():
         except Exception:
             db.session.rollback()
 
-    # Inicia scheduler apenas uma vez (evita duplicação no reload do Werkzeug)
-    if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        from app.scheduler import start_scheduler
-        start_scheduler(app)
+    # Alertas ao professor agora são criados a cada correção (sem agendador)
+    with app.app_context():
+        from app.scheduler import migrate_session_alerts_schema
+        migrate_session_alerts_schema(db)
 
     return app

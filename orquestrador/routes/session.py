@@ -11,6 +11,7 @@ from .auth import token_required
 from datetime import datetime
 from .services_routs import CONTROL_URL, STRATEGIES_URL, USER_URL, DOMAIN_URL
 from .orchestrator.agente_control.agente_control_routes import execute_agent_logic
+from extensions import socketio
 
 session_bp = Blueprint("session", __name__)
 
@@ -371,6 +372,24 @@ def prev_tactic(session_id, current_user=None):
         return jsonify({"error": "Control service unavailable", "details": str(e)}), 503
 
 
+def _notify_teacher_low_score(session_id, student_id, score_pct, attempt, tactic_index, received_material):
+    """Cria o alerta de aprendizagem no serviço de Estratégias (executado em segundo plano)."""
+    try:
+        requests.post(
+            f"{STRATEGIES_URL}/sessions/{session_id}/alerts/low_score",
+            json={
+                "student_id": student_id,
+                "score_pct": score_pct,
+                "attempt": attempt,
+                "tactic_index": tactic_index,
+                "received_material": received_material,
+            },
+            timeout=60,
+        )
+    except Exception as e:
+        logging.warning("Falha ao criar alerta do professor sessão=%s aluno=%s: %s", session_id, student_id, e)
+
+
 @session_bp.route("/sessions/submit_answer", methods=["POST"])
 @token_required
 def submit_answer(current_user=None):
@@ -408,6 +427,9 @@ def submit_answer(current_user=None):
 
         resp_data = resp.json()
         passed = resp_data.get("passed", False)
+        forced_advance = resp_data.get("forced_advance", False)
+        attempts = resp_data.get("attempts", 1)
+        max_cycles = resp_data.get("max_recovery_cycles", 3)
         score = resp_data.get("score", 0)
         student_tactic_index = resp_data.get("student_tactic_index", tactic_index)
 
@@ -415,12 +437,26 @@ def submit_answer(current_user=None):
         pct = int((score / total) * 100)
         if passed:
             msg = f"Parabéns! Você acertou {score}/{total} questões ({pct}%) e avançou para a próxima tática."
+        elif forced_advance:
+            msg = (f"Você acertou {score}/{total} questões ({pct}%). Você já recebeu os {max_cycles} materiais "
+                   f"de revisão desta etapa, então seguirá para a próxima tática.")
         else:
-            msg = f"Você acertou {score}/{total} questões ({pct}%). São necessários 70% para avançar. Tente novamente!"
+            msg = (f"Você acertou {score}/{total} questões ({pct}%). São necessários 70% para avançar. "
+                   f"Leia o material de revisão {attempts} de {max_cycles} e tente novamente!")
+
+        # Toda tentativa com menos de 70% avisa o professor (TCC, seção 4.4.4)
+        if not passed and student_id:
+            socketio.start_background_task(
+                _notify_teacher_low_score, session_id, student_id, pct, attempts, tactic_index,
+                not forced_advance
+            )
 
         return jsonify({
             "resp": msg,
             "passed": passed,
+            "forced_advance": forced_advance,
+            "attempts": attempts,
+            "max_recovery_cycles": max_cycles,
             "score": score,
             "student_tactic_index": student_tactic_index
         }), 200
@@ -630,7 +666,8 @@ def get_current_tactic(session_id):
         'session_status': session_json['status'],
         'current_tactic_index': current_tactic_index,
         'strategy_id': current_strategy_id,
-        'adaptive_tactic_enabled': session_json.get('adaptive_tactic_enabled', False)
+        'adaptive_tactic_enabled': session_json.get('adaptive_tactic_enabled', False),
+        'reuso_cooldown_enabled': session_json.get('reuso_cooldown_enabled', True)
     })
 
 
@@ -643,6 +680,26 @@ def set_adaptive_tactic(session_id, current_user=None):
     try:
         resp = requests.post(
             f"{CONTROL_URL}/sessions/{session_id}/set_adaptive_tactic",
+            json=data,
+            timeout=10
+        )
+        try:
+            return jsonify(resp.json()), resp.status_code
+        except Exception:
+            return resp.text, resp.status_code
+    except RequestException as e:
+        return jsonify({"error": str(e)}), 503
+
+
+@session_bp.route('/sessions/<int:session_id>/set_reuso_cooldown', methods=['POST'])
+@token_required
+def set_reuso_cooldown(session_id, current_user=None):
+    if current_user and current_user.get('type') != 'teacher':
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.get_json() or {}
+    try:
+        resp = requests.post(
+            f"{CONTROL_URL}/sessions/{session_id}/set_reuso_cooldown",
             json=data,
             timeout=10
         )

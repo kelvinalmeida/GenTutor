@@ -60,7 +60,7 @@ Critérios: começa com Reuso, varia abordagens, faz sentido pedagógico.
         )
         
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Responda apenas JSON."},
                 {"role": "user", "content": prompt}
@@ -262,7 +262,7 @@ def decide_next_tactic():
         )
         
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Responda apenas JSON."},
                 {"role": "user", "content": prompt}
@@ -436,7 +436,7 @@ def decide_rules_logic():
 
         # --- 4. Chamada LLM ---
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Responda apenas JSON."},
                 {"role": "user", "content": prompt}
@@ -572,7 +572,7 @@ def get_student_chat_history(username):
                 """
 
                 resp = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
+                    model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.2
                 )

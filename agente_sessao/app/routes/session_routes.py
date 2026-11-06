@@ -15,6 +15,12 @@ except ImportError:
 
 session_bp = Blueprint('session_bp', __name__)
 
+# Regra da etapa de avaliação (TCC, seção 4.4.2): 70% de acerto para avançar.
+# Cada falha gera um material de recuperação (Quadro 2: 1ª, 2ª e 3ª abordagens) e nova tentativa.
+# Se o aluno ainda tirar nota baixa depois do 3º material, ele deixa o ciclo e segue na sessão.
+PASS_THRESHOLD = 0.7
+MAX_RECOVERY_CYCLES = 3
+
 def generate_unique_code(length=8):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
@@ -85,6 +91,8 @@ def get_session_details(conn, session_id):
         session_dict['rating_average'] = session.get('rating_average', 0.0)
         session_dict['rating_count'] = session.get('rating_count', 0)
         session_dict['adaptive_tactic_enabled'] = session.get('adaptive_tactic_enabled', False)
+        rc = session.get('reuso_cooldown_enabled')
+        session_dict['reuso_cooldown_enabled'] = True if rc is None else bool(rc)
 
         try:
             session_dict['executed_indices'] = json.loads(session.get('executed_indices', '[]'))
@@ -121,6 +129,8 @@ def ensure_student_progress_table(conn):
 
     # Each migration is independent so a pre-existing column never blocks newer ones
     _run_migration(conn, "ALTER TABLE verified_answers ADD COLUMN IF NOT EXISTS tactic_index INTEGER NOT NULL DEFAULT 0")
+    _run_migration(conn, "ALTER TABLE verified_answers ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 1")
+    _run_migration(conn, "ALTER TABLE verified_answers ADD COLUMN IF NOT EXISTS score_history JSONB NOT NULL DEFAULT '[]'::jsonb")
     _run_migration(conn, "ALTER TABLE student_session_progress ADD COLUMN IF NOT EXISTS tactic_started_at TIMESTAMP")
     _run_migration(conn, "ALTER TABLE student_session_progress ADD COLUMN IF NOT EXISTS student_started BOOLEAN DEFAULT TRUE")
     _run_migration(conn, "ALTER TABLE student_session_progress ADD COLUMN IF NOT EXISTS should_end_session BOOLEAN DEFAULT FALSE")
@@ -161,6 +171,7 @@ def ensure_adaptive_tactic_column(conn):
     with conn.cursor() as cur:
         try:
             cur.execute("ALTER TABLE session ADD COLUMN IF NOT EXISTS adaptive_tactic_enabled BOOLEAN DEFAULT FALSE")
+            cur.execute("ALTER TABLE session ADD COLUMN IF NOT EXISTS reuso_cooldown_enabled BOOLEAN DEFAULT TRUE")
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -507,29 +518,36 @@ def submit_answer():
     with get_db_connection() as conn:
         ensure_student_progress_table(conn)
         with conn.cursor() as cur:
-            # Upsert: permite retentativa na mesma tática
+            # Upsert: permite retentativa na mesma tática e conta as tentativas
             cur.execute("""
-                INSERT INTO verified_answers (student_name, student_id, answers, score, session_id, tactic_index)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO verified_answers (student_name, student_id, answers, score, session_id, tactic_index, attempts, score_history)
+                VALUES (%s, %s, %s, %s, %s, %s, 1, jsonb_build_array(%s::int))
                 ON CONFLICT (student_id, session_id, tactic_index)
                 DO UPDATE SET
                     answers = EXCLUDED.answers,
                     score = EXCLUDED.score,
-                    student_name = EXCLUDED.student_name
+                    student_name = EXCLUDED.student_name,
+                    attempts = verified_answers.attempts + 1,
+                    score_history = verified_answers.score_history || EXCLUDED.score_history
+                RETURNING attempts
             """, (
                 data['student_name'],
                 student_id,
                 json.dumps(data['answers']),
                 score,
                 session_id,
-                tactic_index
+                tactic_index,
+                score
             ))
+            attempts = cur.fetchone()['attempts']
 
             total_questions = len(data.get('answers') or []) or 1
-            passed = (score / total_questions) >= 0.7
+            passed = (score / total_questions) >= PASS_THRESHOLD
+            # Ultrapassada a última tentativa, o aluno deixa o ciclo de recuperação e prossegue
+            forced_advance = (not passed) and attempts > MAX_RECOVERY_CYCLES
             now = datetime.utcnow()
 
-            if passed:
+            if passed or forced_advance:
                 # Avança para a próxima tática e inicia o timer pessoal da nova tática
                 cur.execute("""
                     INSERT INTO student_session_progress (session_id, student_id, current_tactic_index, tactic_started_at)
@@ -559,16 +577,20 @@ def submit_answer():
                 WHERE session_id = %s AND student_id = %s
             """, (session_id, student_id))
             row = cur.fetchone()
-            student_tactic_index = row['current_tactic_index'] if row else (tactic_index + 1 if passed else tactic_index)
+            student_tactic_index = row['current_tactic_index'] if row else (tactic_index + 1 if (passed or forced_advance) else tactic_index)
             tactic_started_at_val = row['tactic_started_at'].isoformat() if row and row['tactic_started_at'] else now.isoformat()
 
             conn.commit()
 
-    logging.info("🔍 submit_answer: student=%s session=%s tactic=%s score=%s passed=%s", student_id, session_id, tactic_index, score, passed)
+    logging.info("🔍 submit_answer: student=%s session=%s tactic=%s score=%s passed=%s attempts=%s forced=%s",
+                 student_id, session_id, tactic_index, score, passed, attempts, forced_advance)
 
     return jsonify({
         **data,
         "passed": passed,
+        "attempts": attempts,
+        "max_recovery_cycles": MAX_RECOVERY_CYCLES,
+        "forced_advance": forced_advance,
         "score": score,
         "student_tactic_index": student_tactic_index,
         "tactic_started_at": tactic_started_at_val
@@ -728,6 +750,28 @@ def set_adaptive_tactic(session_id):
             )
             conn.commit()
     return jsonify({"success": True, "adaptive_tactic_enabled": enabled}), 200
+
+
+@session_bp.route('/sessions/<int:session_id>/set_reuso_cooldown', methods=['POST'])
+def set_reuso_cooldown(session_id):
+    """Ativa/desativa o tempo de espera após nota < 70% no Reuso. Só pode mudar fora de sessão em andamento."""
+    data = request.get_json() or {}
+    enabled = bool(data.get('enabled', True))
+    with get_db_connection() as conn:
+        ensure_adaptive_tactic_column(conn)
+        with conn.cursor() as cur:
+            cur.execute("SELECT status FROM session WHERE id = %s", (session_id,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "Session not found"}), 404
+            if row['status'] == 'in-progress':
+                return jsonify({"error": "Não é possível alterar durante uma sessão em andamento."}), 409
+            cur.execute(
+                "UPDATE session SET reuso_cooldown_enabled = %s WHERE id = %s",
+                (enabled, session_id)
+            )
+            conn.commit()
+    return jsonify({"success": True, "reuso_cooldown_enabled": enabled}), 200
 
 
 @session_bp.route('/sessions/<int:session_id>/students/progress', methods=['GET'])

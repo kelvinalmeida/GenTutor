@@ -1,16 +1,20 @@
 import json
 import logging
 import os
+from collections import Counter
+
 import requests
 from flask import Blueprint, jsonify, request
 from openai import OpenAI
-from ...services_routs import CONTROL_URL, STRATEGIES_URL, USER_URL
+from ...services_routs import CONTROL_URL, DOMAIN_URL, STRATEGIES_URL, USER_URL
 
 logging.basicConfig(level=logging.INFO)
 
 agente_plan_bp = Blueprint('agente_plan_bp', __name__)
 
 PERSONALIZATION_GUIDE = """REGRAS DE PERSONALIZAÇÃO DA SEQUÊNCIA:
+Como já foi aplicada a tática de Reuso, não coloque como primeira tática as que são mais semelhantes ao Reuso.
+Priorize a diversidade de abordagens para reforçar o aprendizado.
 
 Por preferência de conteúdo (pref_content_type):
 - 'video' → coloque táticas Reuso antes das síncronas ou de envio.
@@ -26,11 +30,20 @@ Por pref_receive_email:
 - false → mova Envio de Informação para o final.
 
 A ordem deve ser personalizada: dois alunos com preferências diferentes devem ter sequências diferentes.
+Use a estratégia do professor como referência e o perfil da turma apenas como contexto; a decisão é individual."""
 
-IMPORTANTE: já foi aplicada a tática de Reuso, então NÂO coleque como primeira tática a tatica de reuso novamente. 
+# APÊNDICE D do TCC: linha acrescentada ao prompt no replanejamento
+REPLAN_NOTE = "ATENÇÃO: REPLANEJAMENTO após dificuldades — priorize táticas que reforcem os pontos fracos."
 
-Priorize a diversidade de abordagens para reforçar o aprendizado. Também não coloque em sequencia táticas que sejam muito semelhantes entre si, para evitar repetição de atividades.
-"""
+REPLAN_DECISION_GUIDE = """DECISÃO DE REPLANEJAMENTO:
+O aluno acabou de concluir uma tática de Reuso intermediária com exercícios. Avalie o desempenho dele nessa tática
+e decida se a ordem atual das táticas restantes deve ser reorganizada.
+- Se o aluno teve dificuldade (precisou de mais de uma tentativa ou teve nota baixa), reorganize para priorizar
+  os conteúdos em que ele demonstrou dificuldade e responda "replan_needed": true.
+- Se o desempenho foi bom, mantenha a ordem atual e responda "replan_needed": false.
+- Coerência obrigatória: se responder "replan_needed": true, a "tactic_sequence" DEVE ser diferente da ordem atual.
+  Se concluir que a ordem atual já é a melhor, responda "replan_needed": false.
+As táticas já concluídas não fazem parte do replanejamento."""
 
 
 def _build_groq_client():
@@ -40,8 +53,8 @@ def _build_groq_client():
     )
 
 
-def _collect_student_data(student_id, session_id, session_data):
-    """Coleta perfil, notas e histórico do aluno antes de chamar o LLM."""
+def _collect_student_data(student_id, session_data, completed_tactic_index=None):
+    """Coleta perfil, desempenho no exercício e histórico do aluno (sem dados que o identifiquem)."""
     profile = {}
     try:
         r = requests.get(f"{USER_URL}/students/{student_id}/preferences", timeout=10)
@@ -57,17 +70,21 @@ def _collect_student_data(student_id, session_id, session_data):
     except Exception as e:
         logging.warning("Erro ao buscar perfil student_id=%s: %s", student_id, e)
 
+    # Exercício que o aluno acabou de realizar (a tática de Reuso concluída)
     exercise_scores = None
     verified = [
         v for v in session_data.get('verified_answers', [])
         if str(v.get('student_id', '')) == str(student_id)
     ]
+    if completed_tactic_index is not None:
+        same_tactic = [v for v in verified if str(v.get('tactic_index')) == str(completed_tactic_index)]
+        verified = same_tactic or verified
     if verified:
-        scores = [v.get('score', 0) for v in verified]
         latest = verified[-1]
         total_q = max(len(latest.get('answers', [])), 1)
+        scores = latest.get('score_history') or [latest.get('score', 0)]
         exercise_scores = {
-            "attempts": len(scores),
+            "attempts": latest.get('attempts') or len(scores),
             "scores": scores,
             "latest_score": latest.get('score', 0),
             "latest_total": total_q,
@@ -88,8 +105,60 @@ def _collect_student_data(student_id, session_id, session_data):
     return profile, exercise_scores, history
 
 
-def _call_llm_for_plan(profile, exercise_scores, history, available_tactics, is_replan, student_id):
-    """Monta o prompt com todos os dados e faz uma única chamada ao LLM."""
+def _collect_class_profile(session_data):
+    """Perfil da turma: preferências agregadas dos alunos da sessão (sem nomes)."""
+    student_ids = session_data.get('students', [])
+    if not student_ids:
+        return None
+    try:
+        r = requests.post(
+            f"{USER_URL}/students/batch_preferences",
+            json={"student_ids": student_ids}, timeout=10
+        )
+        if r.status_code != 200:
+            return None
+        students = r.json().get('students', [])
+    except Exception as e:
+        logging.warning("Erro ao buscar perfil da turma: %s", e)
+        return None
+    if not students:
+        return None
+
+    def _count(key):
+        c = Counter('N/A' if s.get(key) in (None, '') else str(s.get(key)) for s in students)
+        return ", ".join(f"{k}: {v}" for k, v in c.most_common())
+
+    return {
+        "total": len(students),
+        "pref_content_type": _count('pref_content_type'),
+        "pref_communication": _count('pref_communication'),
+        "pref_receive_email": _count('pref_receive_email'),
+    }
+
+
+def _collect_domain_info(session_data, strategy_tactics):
+    """Nome e descrição dos domínios usados na sessão (da sessão e das táticas de Reuso)."""
+    domain_ids = [d for d in session_data.get('domains', []) if d]
+    for t in strategy_tactics:
+        if t.get('domain_id') and t.get('domain_id') not in domain_ids:
+            domain_ids.append(t.get('domain_id'))
+    domains = []
+    for domain_id in domain_ids:
+        try:
+            r = requests.get(f"{DOMAIN_URL}/domains/{domain_id}", timeout=10)
+            if r.status_code == 200:
+                d = r.json()
+                domains.append({"name": d.get('name', ''), "description": d.get('description', '')})
+        except Exception as e:
+            logging.warning("Erro ao buscar domínio %s: %s", domain_id, e)
+    return domains
+
+
+def _call_llm_for_plan(profile, exercise_scores, history, available_tactics, is_replan, student_id,
+                       class_profile=None, strategy_tactics=None, domains=None, current_order=None,
+                       correction=None):
+    """Monta o prompt com todos os dados e faz uma chamada ao LLM.
+    `correction`: aviso extra enviado quando a resposta anterior foi incoerente."""
     valid_indices = [t['index'] for t in available_tactics]
 
     tactics_text = "\n".join(
@@ -113,24 +182,45 @@ def _call_llm_for_plan(profile, exercise_scores, history, available_tactics, is_
         "\n".join(f"- Sessão {h['session_id']}: {h['summary']}" for h in history)
     ) if history else "Sem histórico de sessões anteriores."
 
-    replan_note = (
-        "ATENÇÃO: REPLANEJAMENTO após dificuldades — priorize táticas que reforcem os pontos fracos.\n\n"
-        if is_replan else ""
-    )
+    class_text = (
+        f"Alunos na sessão: {class_profile['total']}\n"
+        f"Conteúdo preferido: {class_profile['pref_content_type']}\n"
+        f"Comunicação preferida: {class_profile['pref_communication']}\n"
+        f"Aceita e-mail: {class_profile['pref_receive_email']}"
+    ) if class_profile else "Perfil da turma não disponível."
+
+    strategy_text = (
+        " → ".join(f"{i}: {t.get('name', '')}" for i, t in enumerate(strategy_tactics))
+    ) if strategy_tactics else "Não disponível."
+
+    domain_text = (
+        "\n".join(f"- {d['name']}: {str(d.get('description') or '')[:200]}" for d in domains)
+    ) if domains else "Não disponível."
+
+    replan_block = f"{REPLAN_NOTE}\n\n{REPLAN_DECISION_GUIDE}\n\n" if is_replan else ""
+    replan_field = (
+        '\n  "replan_needed": true ou false,'
+        '\n  "replan_reason": "motivo da decisão em 1-2 frases, dirigido ao aluno (use \'você\')",'
+    ) if is_replan else ""
 
     system_prompt = f"""Você é um especialista em aprendizagem adaptativa. Crie uma sequência personalizada de táticas para um aluno.
 
-{replan_note}{PERSONALIZATION_GUIDE}
+{replan_block}{PERSONALIZATION_GUIDE}
 
 TÁTICAS DISPONÍVEIS (índices {valid_indices}):
 {tactics_text}
 
 Responda APENAS com JSON válido neste formato exato:
-{{
+{{{replan_field}
   "tactic_sequence": [lista com TODOS os índices {valid_indices}, cada um UMA vez, na ordem personalizada],
   "overall_goal": "objetivo pedagógico em 1-2 frases",
   "tactic_reasons": {{"indice_como_string": "justificativa baseada no perfil do aluno"}}
 }}"""
+
+    current_order_text = (
+        f"\n\nORDEM ATUAL DAS TÁTICAS RESTANTES NO PLANO: {current_order}"
+        if is_replan and current_order else ""
+    )
 
     user_prompt = f"""PERFIL DO ALUNO:
 {profile_text}
@@ -141,19 +231,30 @@ DESEMPENHO NOS EXERCÍCIOS DO REUSO:
 HISTÓRICO DE SESSÕES ANTERIORES:
 {history_text}
 
+PERFIL DA TURMA:
+{class_text}
+
+ESTRATÉGIA DO PROFESSOR (sequência original):
+{strategy_text}
+
+DOMÍNIO DA SESSÃO:
+{domain_text}{current_order_text}
+
 Crie o plano personalizado para as táticas restantes."""
+    if correction:
+        user_prompt += f"\n\n{correction}"
 
     client = _build_groq_client()
     plan_result = None
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.3,
-            max_tokens=500,
+            max_tokens=2000,
         )
         raw = (response.choices[0].message.content or "").strip()
         start = raw.find('{')
@@ -165,7 +266,9 @@ Crie o plano personalizado para as táticas restantes."""
 
     if not plan_result:
         return {
-            "tactic_sequence": valid_indices,
+            "replan_needed": False,
+            "replan_reason": "Não foi possível analisar seu desempenho agora, então seu plano atual foi mantido.",
+            "tactic_sequence": current_order or valid_indices,
             "overall_goal": "Completar todas as atividades da sessão.",
             "tactic_reasons": {},
         }
@@ -184,8 +287,14 @@ Crie o plano personalizado para as táticas restantes."""
         if idx not in seen:
             seq.append(idx)
 
-    logging.info("Plano gerado: sequence=%s student=%s", seq, student_id)
+    replan_needed = plan_result.get('replan_needed', True)
+    if isinstance(replan_needed, str):
+        replan_needed = replan_needed.strip().lower() in ('true', 'sim', 'yes', '1')
+
+    logging.info("Plano gerado: sequence=%s student=%s replan_needed=%s", seq, student_id, replan_needed)
     return {
+        "replan_needed": bool(replan_needed),
+        "replan_reason": str(plan_result.get('replan_reason') or '').strip(),
         "tactic_sequence": seq,
         "overall_goal": plan_result.get('overall_goal', ''),
         "tactic_reasons": plan_result.get('tactic_reasons', {}),
@@ -195,13 +304,16 @@ Crie o plano personalizado para as táticas restantes."""
 @agente_plan_bp.route('/orchestrator/agent/replan_session', methods=['POST'])
 def replan_session():
     """
-    Chamado após o aluno concluir o Reuso. Coleta perfil + notas e pede ao LLM
-    a sequência personalizada das táticas restantes em uma única chamada.
+    Chamado ao concluir uma tática de Reuso com exercícios.
+
+    - 1º Reuso (aluno ainda sem plano): planejamento individualizado da sessão.
+    - Reuso intermediário (aluno já tem plano): a IA decide se reorganiza as táticas
+      restantes; as táticas já concluídas são preservadas.
+    Ocorre quando o aluno atinge 70% ou esgota as tentativas da avaliação.
     """
     data = request.get_json() or {}
     student_id = data.get('student_id')
     session_id = data.get('session_id')
-    is_replan = bool(data.get('is_replan', True))
     completed_tactic_index = data.get('completed_tactic_index')
 
     if student_id is None or session_id is None:
@@ -209,15 +321,24 @@ def replan_session():
 
     try:
         executed_tactic_indices = []
+        existing_plan = None
         try:
             progress_resp = requests.get(
                 f"{CONTROL_URL}/sessions/{session_id}/student/{student_id}/tactic_index",
                 timeout=10
             )
             if progress_resp.status_code == 200:
-                executed_tactic_indices = list(progress_resp.json().get('executed_tactic_indices', []))
+                prog = progress_resp.json()
+                executed_tactic_indices = list(prog.get('executed_tactic_indices', []))
+                raw_plan = prog.get('session_plan')
+                if raw_plan:
+                    existing_plan = json.loads(raw_plan) if isinstance(raw_plan, str) else raw_plan
         except Exception as e:
             logging.warning("Erro ao buscar progresso student_id=%s: %s", student_id, e)
+
+        # O servidor decide se é planejamento inicial ou replanejamento: depende de já existir um plano
+        existing_seq = (existing_plan or {}).get('tactic_sequence') or []
+        is_replan = bool(existing_seq)
 
         if completed_tactic_index is not None:
             try:
@@ -247,18 +368,73 @@ def replan_session():
         if not remaining_indices:
             return jsonify({"message": "Sem táticas restantes para replanejar"}), 200
 
+        # Ordem atual das táticas restantes segundo o plano vigente
+        current_order = [i for i in existing_seq if i in remaining_indices]
+        current_order += [i for i in remaining_indices if i not in current_order]
+
         available_tactics = [
             {"index": i, "name": strategy_tactics[i].get('name', ''), "description": strategy_tactics[i].get('description', '')}
             for i in remaining_indices
         ]
 
-        profile, exercise_scores, history = _collect_student_data(student_id, session_id, session_data)
-        plan = _call_llm_for_plan(profile, exercise_scores, history, available_tactics, is_replan, student_id)
+        profile, exercise_scores, history = _collect_student_data(student_id, session_data, completed_tactic_index)
+        class_profile = _collect_class_profile(session_data)
+        domains = _collect_domain_info(session_data, strategy_tactics)
+
+        plan = _call_llm_for_plan(
+            profile, exercise_scores, history, available_tactics, is_replan, student_id,
+            class_profile=class_profile, strategy_tactics=strategy_tactics, domains=domains,
+            current_order=current_order if is_replan else None,
+        )
+
+        # A IA pode dizer que replaneja e mesmo assim devolver a mesma ordem. Pede de novo uma vez,
+        # apontando a incoerência; se repetir, trata como plano mantido para o aviso ao aluno ser verdadeiro.
+        if is_replan and plan['replan_needed'] and plan['tactic_sequence'] == current_order:
+            logging.info("IA indicou replanejamento mas repetiu a ordem %s (student_id=%s); nova tentativa",
+                         current_order, student_id)
+            plan = _call_llm_for_plan(
+                profile, exercise_scores, history, available_tactics, is_replan, student_id,
+                class_profile=class_profile, strategy_tactics=strategy_tactics, domains=domains,
+                current_order=current_order,
+                correction=(
+                    f"ATENÇÃO: na resposta anterior você indicou \"replan_needed\": true, mas devolveu a mesma ordem "
+                    f"atual {current_order}. Se o replanejamento é necessário, devolva uma ordem DIFERENTE de "
+                    f"{current_order} que reforce os pontos de dificuldade. Se a ordem atual já é a melhor, "
+                    f"responda \"replan_needed\": false e explique o motivo."
+                ),
+            )
+            if plan['replan_needed'] and plan['tactic_sequence'] == current_order:
+                plan['replan_needed'] = False
+                plan['replan_reason'] = (
+                    "Você teve dificuldade nessa tática, mas a ordem das próximas atividades já é a mais "
+                    "adequada para reforçar esses conteúdos, então ela foi mantida."
+                )
+
+        if is_replan and not plan['replan_needed']:
+            logging.info("Replanejamento dispensado pela IA student_id=%s; mantendo ordem %s",
+                         student_id, current_order)
+            return jsonify({
+                "is_replan": True,
+                "replanned": False,
+                "replan_reason": plan.get("replan_reason") or "Seu desempenho foi adequado, então o plano atual foi mantido.",
+                "new_sequence": existing_seq,
+                "overall_goal": existing_plan.get('overall_goal', ''),
+                "message": "Desempenho adequado: plano mantido.",
+            }), 200
+
+        # Preserva o progresso: táticas já concluídas (incluindo o 1º Reuso) ficam no início do plano,
+        # para aparecerem como concluídas na sequência mostrada ao aluno e ao professor
+        done_prefix = [i for i in existing_seq if i in executed_tactic_indices]
+        done_prefix += [i for i in executed_tactic_indices if i not in done_prefix]
+        full_sequence = done_prefix + plan['tactic_sequence']
+
+        reasons = dict((existing_plan or {}).get('tactic_reasons', {})) if is_replan else {}
+        reasons.update(plan['tactic_reasons'] or {})
 
         plan_json = json.dumps({
-            "tactic_sequence": plan['tactic_sequence'],
+            "tactic_sequence": full_sequence,
             "overall_goal": plan['overall_goal'],
-            "tactic_reasons": plan['tactic_reasons'],
+            "tactic_reasons": reasons,
         })
 
         requests.post(
@@ -268,10 +444,13 @@ def replan_session():
         )
 
         logging.info("Plano salvo student_id=%s sequence=%s is_replan=%s",
-                     student_id, plan['tactic_sequence'], is_replan)
+                     student_id, full_sequence, is_replan)
 
         return jsonify({
-            "new_sequence": plan['tactic_sequence'],
+            "is_replan": is_replan,
+            "replanned": is_replan,
+            "replan_reason": (plan.get("replan_reason") or "As próximas atividades foram reorganizadas para reforçar os pontos em que você teve dificuldade.") if is_replan else "",
+            "new_sequence": full_sequence,
             "overall_goal": plan['overall_goal'],
             "message": "Plano atualizado com sucesso.",
         }), 200

@@ -106,7 +106,7 @@ REGRAS OBRIGATÓRIAS:
 
         client = _build_groq_client()
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Você é especialista em pedagogia adaptativa. Responda apenas JSON válido."},
                 {"role": "user", "content": prompt}

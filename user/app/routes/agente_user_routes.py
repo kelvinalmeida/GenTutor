@@ -106,7 +106,7 @@ def summarize_preferences():
         )
         
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Você é um assistente pedagógico conciso."},
                 {"role": "user", "content": prompt}
@@ -188,7 +188,7 @@ def summarize_logged_user():
         )
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Você resume perfis de alunos de forma objetiva."},
                 {"role": "user", "content": prompt}
@@ -322,13 +322,13 @@ def generate_student_feedback():
         """
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": str(user_prompt)}
             ],
             temperature=0.5,
-            max_tokens=600
+            max_tokens=2000
         )
 
         feedback_text = response.choices[0].message.content
@@ -555,13 +555,13 @@ Sem markdown, sem títulos, apenas texto corrido."""
             base_url="https://api.groq.com/openai/v1"
         )
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Você resume sessões de ensino de forma objetiva e pedagógica."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
-            max_tokens=200
+            max_tokens=1200
         )
         summary = (response.choices[0].message.content or "").strip()
 
@@ -691,7 +691,7 @@ def help_student_agent():
         )
         
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Tutor Inteligente."},
                 {"role": "user", "content": str(user_prompt)}

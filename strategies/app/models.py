@@ -15,5 +15,7 @@ class SessionAlert(db.Model):
     mastery_pct = db.Column(db.Float, nullable=True)
     score = db.Column(db.Integer, nullable=True)       # para alert_type='low_score'
     answer_id = db.Column(db.Integer, nullable=True)   # dedup de low_score
+    attempt = db.Column(db.Integer, nullable=True)     # tentativa do Reuso (um alerta por tentativa)
+    tactic_index = db.Column(db.Integer, nullable=True)
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

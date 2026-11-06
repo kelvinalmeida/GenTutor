@@ -54,7 +54,7 @@ def recommend_youtube_video():
 
         client = _build_groq_client()
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Responda apenas JSON válido."},
                 {"role": "user", "content": prompt}
@@ -117,7 +117,7 @@ def generate_personalized_study_text():
 
         client = _build_groq_client()
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Você escreve materiais pedagógicos personalizados com clareza."},
                 {"role": "user", "content": prompt}
@@ -228,7 +228,7 @@ REGRAS OBRIGATÓRIAS:
 
         client = _build_groq_client()
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Você escreve materiais pedagógicos personalizados. Nunca revele respostas corretas."},
                 {"role": "user", "content": prompt}
@@ -288,7 +288,7 @@ REGRAS:
 
         client = _build_groq_client()
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Você extrai conceitos pedagógicos de exercícios. Responda apenas JSON válido."},
                 {"role": "user", "content": prompt}

@@ -44,7 +44,7 @@ Service URLs are registered in `orquestrador/routes/services_routs.py`. These ma
 
 ## AI Agent Layer
 
-All LLM calls use the `openai` Python SDK pointed at Groq's API (`base_url="https://api.groq.com/openai/v1"`, model `llama-3.3-70b-versatile`). Each service has its own `GROQ_API_KEY` in `.env`.
+All LLM calls use the `openai` Python SDK pointed at Groq's API (`base_url="https://api.groq.com/openai/v1"`, model `openai/gpt-oss-120b` with `extra_body={"reasoning_effort": "low"}`; it is a reasoning model, so keep `max_tokens` generous — reasoning tokens count toward it). Each service has its own `GROQ_API_KEY` in `.env`.
 
 **Agent endpoints** (prefixed `/agent/` per service):
 - `agente_sessao` → `/sessions/<id>/agent_summary` — session performance summary

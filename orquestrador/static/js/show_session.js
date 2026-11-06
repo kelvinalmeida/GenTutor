@@ -2,6 +2,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let countdownInterval = null;
     let taticaAtiva = false;
     let adaptiveTacticEnabled = false;
+    let reusoCooldownEnabled = true;
+    // true enquanto a IA planeja/replaneja após o Reuso: o polling não pode renderizar a próxima tática antes do plano
+    let reusoPlanningInProgress = false;
 
     let debateSicrono_isActive = false;
     let apresentacaoSicrona_isActive = false;
@@ -127,6 +130,41 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem(`session_goal_${session_id}_${my_id}`, goalText);
         }
     }
+
+    // Aviso do resultado da decisão de replanejamento (Reuso intermediário)
+    const _replanNoticeKey = () => `replan_notice_${session_id}_${my_id}`;
+
+    function showReplanNotice(notice) {
+        const banner = document.getElementById("replan-notice-banner");
+        if (!banner || !notice) return;
+        const replanned = !!notice.replanned;
+        document.getElementById("replan-notice-icon").textContent = replanned ? "🔄" : "✅";
+        const title = document.getElementById("replan-notice-title");
+        title.textContent = replanned
+            ? "Seu plano de estudos foi replanejado"
+            : "Não foi necessário replanejar seu plano de estudos";
+        title.className = replanned ? "text-warning-emphasis" : "text-success";
+        document.getElementById("replan-notice-text").textContent = notice.reason || "";
+        banner.style.background = replanned ? "#fff7e6" : "#ecfdf5";
+        banner.style.borderLeft = `4px solid ${replanned ? "#f59e0b" : "#10b981"}`;
+        banner.classList.remove("d-none");
+        localStorage.setItem(_replanNoticeKey(), JSON.stringify(notice));
+    }
+
+    function hideReplanNotice() {
+        const banner = document.getElementById("replan-notice-banner");
+        if (banner) banner.classList.add("d-none");
+        localStorage.removeItem(_replanNoticeKey());
+    }
+
+    function restoreReplanNotice() {
+        const stored = localStorage.getItem(_replanNoticeKey());
+        if (!stored) return;
+        try { showReplanNotice(JSON.parse(stored)); } catch (e) { localStorage.removeItem(_replanNoticeKey()); }
+    }
+
+    const _replanCloseBtn = document.getElementById("replan-notice-close");
+    if (_replanCloseBtn) _replanCloseBtn.addEventListener("click", hideReplanNotice);
 
     function restoreSessionGoal() {
         const stored = localStorage.getItem(`session_goal_${session_id}_${my_id}`);
@@ -767,9 +805,9 @@ document.addEventListener("DOMContentLoaded", () => {
                                             console.log("Respostas enviadas:", respData);
                                             _clearProactiveTimer();
 
-                                            if (respData.passed) {
-                                                feedbackEl.className = "mt-2 text-success fw-bold";
-                                                // Limpa dados persistidos ao passar nos exercícios
+                                            // Reuso concluído (aprovado ou após atingir o limite de tentativas):
+                                            // 1º Reuso → planejamento individualizado; Reuso intermediário → replanejamento.
+                                            const _afterReusoCompleted = () => {
                                                 localStorage.removeItem(`reuso_cooldown_end_${session_id}_${my_id}`);
                                                 localStorage.removeItem(`reuso_study_text_${session_id}_${my_id}`);
                                                 localStorage.removeItem(`reuso_attempt_${session_id}_${my_id}_${activeTacticIndex || 0}`);
@@ -806,40 +844,53 @@ document.addEventListener("DOMContentLoaded", () => {
                                                                     body: JSON.stringify({ student_id: my_id, session_id: session_id })
                                                                 }).catch(() => {});
                                                             }
+                                                            reusoPlanningInProgress = false;
                                                             activeTacticIndex = null;
                                                             setTimeout(() => fetchCurrentTactic(session_id), 500);
                                                         })
-                                                        .catch(() => { activeTacticIndex = null; setTimeout(() => fetchCurrentTactic(session_id), 1500); });
+                                                        .catch(() => { reusoPlanningInProgress = false; activeTacticIndex = null; setTimeout(() => fetchCurrentTactic(session_id), 1500); });
                                                     };
 
-                                                    if (!_hasPlan) {
-                                                        // Reuso concluído: planeja as táticas restantes com as notas reais
-                                                        showAdaptiveLoadingState();
-                                                        fetch('/orchestrator/agent/replan_session', {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ student_id: my_id, session_id: session_id, is_replan: false, completed_tactic_index: _completedIdx })
-                                                        })
-                                                        .then(r => r.json())
-                                                        .then(planData => {
-                                                            if (planData.overall_goal) showSessionGoal(planData.overall_goal);
-                                                            if (planData.new_sequence) {
-                                                                localStorage.setItem(`plan_sequence_${session_id}_${my_id}`, JSON.stringify(planData.new_sequence));
-                                                            }
-                                                            _doReusoTransition(true);
-                                                        })
-                                                        .catch(() => _doReusoTransition(false));
-                                                    } else {
+                                                    // Sem plano: 1º Reuso (avaliação inicial) → planejamento geral da sessão.
+                                                    // Com plano: Reuso intermediário com exercícios → a IA decide se replaneja
+                                                    // as táticas restantes, preservando as já concluídas.
+                                                    reusoPlanningInProgress = true;
+                                                    hideReplanNotice(); // aviso anterior deixa de valer
+                                                    showAdaptiveLoadingState();
+                                                    fetch('/orchestrator/agent/replan_session', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ student_id: my_id, session_id: session_id, is_replan: _hasPlan, completed_tactic_index: _completedIdx })
+                                                    })
+                                                    .then(r => r.json())
+                                                    .then(planData => {
+                                                        if (planData.overall_goal) showSessionGoal(planData.overall_goal);
+                                                        // Reuso intermediário: informa se a IA replanejou ou não, e o motivo
+                                                        if (planData.is_replan) {
+                                                            showReplanNotice({ replanned: !!planData.replanned, reason: planData.replan_reason || '' });
+                                                        }
+                                                        if (planData.new_sequence) {
+                                                            localStorage.setItem(`plan_sequence_${session_id}_${my_id}`, JSON.stringify(planData.new_sequence));
+                                                        }
                                                         _doReusoTransition(true);
-                                                    }
+                                                    })
+                                                    .catch(() => _doReusoTransition(false));
                                                 } else {
                                                     setTimeout(() => fetchCurrentTactic(session_id), 1500);
                                                 }
+                                            };
+
+                                            if (respData.passed) {
+                                                feedbackEl.className = "mt-2 text-success fw-bold";
+                                                _afterReusoCompleted();
                                             } else {
                                                 feedbackEl.className = "mt-2 text-danger fw-bold";
+                                                const _forcedAdvance = !!respData.forced_advance;
 
-                                                // --- Desabilita o botão por 3 minutos com countdown ---
-                                                if (submitBtn) {
+                                                // --- Desabilita o botão por 3 minutos com countdown (se o professor ativou e ainda houver tentativas) ---
+                                                if (submitBtn && !_forcedAdvance && !reusoCooldownEnabled) {
+                                                    submitBtn.disabled = false;
+                                                } else if (submitBtn && !_forcedAdvance) {
                                                     submitBtn.disabled = true;
                                                     const cooldownEndTime = Date.now() + 180 * 1000;
                                                     localStorage.setItem(`reuso_cooldown_end_${session_id}_${my_id}`, cooldownEndTime.toString());
@@ -881,13 +932,15 @@ document.addEventListener("DOMContentLoaded", () => {
                                                             <div class="modal-body">
                                                                 <p class="fw-semibold">${feedbackEl.textContent}</p>
                                                                 <hr>
-                                                                <p id="modal-ai-status" class="mb-0">
+                                                                ${_forcedAdvance
+                                                                    ? `<p class="mb-0">Seu professor foi avisado e vai acompanhar seu progresso. Seguindo para a próxima atividade…</p>`
+                                                                    : `<p id="modal-ai-status" class="mb-0">
                                                                     <span class="spinner-border spinner-border-sm text-warning me-2" role="status"></span>
                                                                     Gerando material de revisão personalizado com foco nos seus erros...
-                                                                </p>
+                                                                </p>`}
                                                             </div>
                                                             <div class="modal-footer">
-                                                                <button type="button" class="btn btn-warning" data-bs-dismiss="modal">Fechar e Revisar</button>
+                                                                <button type="button" class="btn btn-warning" data-bs-dismiss="modal">${_forcedAdvance ? 'Continuar' : 'Fechar e Revisar'}</button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -895,6 +948,13 @@ document.addEventListener("DOMContentLoaded", () => {
                                                 document.body.appendChild(modalEl);
                                                 const bsModal = new bootstrap.Modal(modalEl);
                                                 bsModal.show();
+                                                if (_forcedAdvance) {
+                                                    // Nota baixa mesmo depois dos 3 materiais de recuperação: o aluno deixa o ciclo
+                                                    // e segue na sessão, com planejamento/replanejamento se a tática adaptativa estiver ativa.
+                                                    form.reset();
+                                                    _afterReusoCompleted();
+                                                    return;
+                                                }
 
                                                 // --- Spinner na aba PDF ---
                                                 const pdfContainer = document.getElementById("pdf_container");
@@ -909,27 +969,10 @@ document.addEventListener("DOMContentLoaded", () => {
                                                     if (pdfTabBtn) new bootstrap.Tab(pdfTabBtn).show();
                                                 }
 
-                                                // Rastreia o número de tentativas para variar a abordagem pedagógica
+                                                // Número da tentativa (contado no serviço de sessão) define a abordagem do material (Quadro 2)
                                                 const _attemptKey = `reuso_attempt_${session_id}_${studentId}_${activeTacticIndex || 0}`;
-                                                const _attemptNumber = parseInt(localStorage.getItem(_attemptKey) || '0') + 1;
+                                                const _attemptNumber = parseInt(respData.attempts) || (parseInt(localStorage.getItem(_attemptKey) || '0') + 1);
                                                 localStorage.setItem(_attemptKey, _attemptNumber.toString());
-
-                                                // Na 2ª falha, replaneja o restante da sessão em background
-                                                if (_attemptNumber === 2 && adaptiveTacticEnabled) {
-                                                    fetch('/orchestrator/agent/replan_session', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ student_id: my_id, session_id: session_id, executed_tactic_indices: [] })
-                                                    })
-                                                    .then(r => r.json())
-                                                    .then(replanData => {
-                                                        if (replanData.overall_goal) showSessionGoal(replanData.overall_goal);
-                                                        if (replanData.new_sequence) {
-                                                            localStorage.setItem(`plan_sequence_${session_id}_${my_id}`, JSON.stringify(replanData.new_sequence));
-                                                        }
-                                                    })
-                                                    .catch(() => {});
-                                                }
 
                                                 fetch('/orchestrator/agent/generate_wrong_answers_text', {
                                                     method: 'POST',
@@ -1264,8 +1307,10 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(response => response.json())
             .then(data => {
                 console.log("Dados da tática atual: ", data);
+                if (reusoPlanningInProgress) return; // a IA ainda está montando o plano
 
                 adaptiveTacticEnabled = data.adaptive_tactic_enabled || false;
+                reusoCooldownEnabled = data.reuso_cooldown_enabled !== false;
 
                 if (data.strategy_id && window.current_strategy_id && data.strategy_id != window.current_strategy_id) {
                     console.log("Strategy changed, reloading page...");
@@ -1280,6 +1325,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     localStorage.removeItem(`adaptive_reasoning_${session_id}_${my_id}`);
                     localStorage.removeItem(`session_goal_${session_id}_${my_id}`);
                     localStorage.removeItem(`plan_sequence_${session_id}_${my_id}`);
+                    hideReplanNotice();
                     hideAdaptiveReasoning();
                     const goalBanner = document.getElementById("session-goal-banner");
                     if (goalBanner) goalBanner.classList.add("d-none");
@@ -1311,7 +1357,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     showStudentTacticArea();
 
                     // Restaura objetivo da sessão ao recarregar
-                    if (adaptiveTacticEnabled) restoreSessionGoal();
+                    if (adaptiveTacticEnabled) { restoreSessionGoal(); restoreReplanNotice(); }
 
                     // Renderiza painel do plano se existir
                     if (adaptiveTacticEnabled) {
@@ -1443,6 +1489,16 @@ document.addEventListener("DOMContentLoaded", () => {
                             endSessionBtn.innerHTML = '<i class="bi bi-stop-circle me-2"></i>Sessão Encerrada';
                             const startBtn = document.getElementById("startSessionBtn");
                             if (startBtn) startBtn.classList.remove("d-none");
+                            // Sessão encerrada: libera os controles que ficam travados durante a sessão
+                            [["reusoCooldownSwitch", "reuso-cooldown-status"],
+                             ["adaptiveTacticSwitch", "adaptive-tactic-status"]].forEach(([swId, stId]) => {
+                                const sw = document.getElementById(swId);
+                                if (!sw) return;
+                                sw.disabled = false;
+                                const wrap = sw.closest('.ai-wrapper');
+                                if (wrap) wrap.style.opacity = '';
+                                sw.dispatchEvent(new CustomEvent('refresh-status'));
+                            });
                             const statusPill = document.querySelector('.status-in-progress');
                             if (statusPill) {
                                 statusPill.className = 'status-pill status-finished';
@@ -1503,7 +1559,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (window.user_type === 'student') {
         fetchCurrentTactic(session_id);
-        setInterval(() => fetchCurrentTactic(session_id), 5000);
+        setInterval(() => { if (!reusoPlanningInProgress) fetchCurrentTactic(session_id); }, 5000);
     }
 
     const adaptiveTacticSwitch = document.getElementById("adaptiveTacticSwitch");
@@ -1532,6 +1588,49 @@ document.addEventListener("DOMContentLoaded", () => {
             .catch(err => {
                 console.error("Erro ao atualizar tática adaptativa:", err);
                 adaptiveTacticSwitch.checked = !enabled;
+            });
+        });
+        adaptiveTacticSwitch.addEventListener("refresh-status", function () {
+            const statusEl = document.getElementById("adaptive-tactic-status");
+            if (statusEl) {
+                statusEl.textContent = this.checked
+                    ? "Ativado: a IA escolhe a próxima tática para cada aluno."
+                    : "Desativado: alunos seguem a ordem normal das táticas.";
+            }
+        });
+    }
+
+    // Tempo de espera (3 min) após nota < 70% no Reuso — só alterável fora de sessão em andamento
+    const reusoCooldownSwitch = document.getElementById("reusoCooldownSwitch");
+    if (reusoCooldownSwitch) {
+        const _setCooldownStatus = (enabled) => {
+            const statusEl = document.getElementById("reuso-cooldown-status");
+            if (statusEl) {
+                statusEl.textContent = enabled
+                    ? "Ativado: o aluno espera 3 minutos antes de refazer os exercícios (nota < 70%)."
+                    : "Desativado: o aluno pode refazer os exercícios imediatamente.";
+            }
+        };
+        reusoCooldownSwitch.addEventListener("refresh-status", function () { _setCooldownStatus(this.checked); });
+        reusoCooldownSwitch.addEventListener("change", function () {
+            const enabled = this.checked;
+            fetch(`/sessions/${session_id}/set_reuso_cooldown`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: enabled })
+            })
+            .then(r => r.json().catch(() => ({})).then(body => ({ ok: r.ok, body })))
+            .then(({ ok, body }) => {
+                if (ok) {
+                    _setCooldownStatus(enabled);
+                } else {
+                    reusoCooldownSwitch.checked = !enabled;
+                    alert(body.error || "Erro ao atualizar o tempo de espera.");
+                }
+            })
+            .catch(err => {
+                console.error("Erro ao atualizar tempo de espera:", err);
+                reusoCooldownSwitch.checked = !enabled;
             });
         });
     }

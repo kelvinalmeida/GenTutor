@@ -435,6 +435,32 @@
             </p>
         </div>
 
+        <!-- Tempo de espera após nota baixa no Reuso -->
+        {% set _cooldown_on = session.reuso_cooldown_enabled != false %}
+        <div class="text-center mb-4">
+            <div class="ai-wrapper" style="{% if session.status == 'in-progress' %}opacity:0.6;{% endif %}">
+                <span class="ai-label">
+                    <div class="ai-icon-bg">⏳</div>
+                    Tempo de espera após nota baixa
+                </span>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input ai-switch" type="checkbox" role="switch"
+                        id="reusoCooldownSwitch"
+                        {% if _cooldown_on %}checked{% endif %}
+                        {% if session.status == 'in-progress' %}disabled{% endif %}>
+                </div>
+            </div>
+            <p class="text-muted small mt-1" id="reuso-cooldown-status">
+                {% if session.status == 'in-progress' %}
+                    Bloqueado durante sessão em andamento.
+                {% elif _cooldown_on %}
+                    Ativado: o aluno espera 3 minutos antes de refazer os exercícios (nota &lt; 70%).
+                {% else %}
+                    Desativado: o aluno pode refazer os exercícios imediatamente.
+                {% endif %}
+            </p>
+        </div>
+
         <!-- Chat Debate Síncrono -->
         <div id="teacher-debate-section" class="mt-4 mb-4 d-none text-start">
             <p class="section-label"><i class="bi bi-chat-dots-fill" style="color:#667eea;"></i> Chat — Debate Síncrono</p>
@@ -485,6 +511,17 @@
                 </div>
             </div>
             <div id="plan-panel" class="d-none mb-3"></div>
+            <!-- Resultado da decisão de replanejamento após um Reuso intermediário -->
+            <div id="replan-notice-banner" class="d-none alert alert-dismissible border-0 mb-3 text-start" role="status">
+                <div class="d-flex align-items-start gap-2">
+                    <span style="font-size:1.4rem;" id="replan-notice-icon">🔄</span>
+                    <div>
+                        <strong id="replan-notice-title"></strong>
+                        <p class="mb-0 text-muted small" id="replan-notice-text"></p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" id="replan-notice-close" aria-label="Fechar"></button>
+            </div>
             <div id="adaptive-reasoning-banner" class="d-none alert border-0 mb-3 text-start"
                 style="background:linear-gradient(135deg,#4facfe22,#00f2fe22);border-left:4px solid #4facfe !important;">
                 <div class="d-flex align-items-start gap-2">
@@ -1109,7 +1146,7 @@
                 const card = document.createElement('div');
                 card.className = 'alert-card';
                 const emailHtml = a.student_email ? `<a href="mailto:${a.student_email}" class="ms-1" style="font-size:0.8rem;">${a.student_email}</a>` : '';
-                card.innerHTML = `<div class="d-flex justify-content-between align-items-center mb-1"><strong><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>${a.student_name||'Aluno ID '+a.student_id}${emailHtml}</strong><small class="text-muted">${formatDate(a.created_at)}</small></div><div class="mb-1"><span class="badge bg-danger me-1">Nota baixa</span><small class="text-danger fw-bold">${a.score??'?'}% na atividade</small></div><div style="color:#374151;">${a.message}</div>`;
+                card.innerHTML = `<div class="d-flex justify-content-between align-items-center mb-1"><strong><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>${a.student_name||'Aluno ID '+a.student_id}${emailHtml}</strong><small class="text-muted">${formatDate(a.created_at)}</small></div><div class="mb-1"><span class="badge bg-danger me-1">Nota baixa</span>${a.attempt?`<span class="badge bg-secondary me-1">${a.attempt}ª tentativa</span>`:""}<small class="text-danger fw-bold">${a.score??'?'}% na atividade</small></div><div style="color:#374151;">${a.message}</div>`;
                 list.prepend(card);
             });
             if (!panelOpen) { newCount += newAlerts.length; const b = document.getElementById('alerts-badge'); b.style.display='flex'; b.textContent=newCount>9?'9+':String(newCount); }

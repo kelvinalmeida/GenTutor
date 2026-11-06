@@ -504,7 +504,7 @@ def run_strategies_agent(session_id: int, student_id: int) -> dict:
 
         try:
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
                 messages=messages,
                 tools=tools_for_call,
                 tool_choice="required",

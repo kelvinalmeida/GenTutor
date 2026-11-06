@@ -210,7 +210,7 @@ def agent_session_summary(session_id):
         
         # 2. Chamada LLM (Sem response_format JSON)
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Você é um assistente pedagógico conciso."},
                 {"role": "user", "content": prompt}
@@ -359,7 +359,7 @@ def get_student_grades_history(student_id):
                 """
 
                 resp = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
+                    model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.2
                 )
@@ -515,7 +515,7 @@ def student_session_difficulty_summary():
         )
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": "Você gera diagnósticos pedagógicos claros e objetivos."},
                 {"role": "user", "content": prompt}

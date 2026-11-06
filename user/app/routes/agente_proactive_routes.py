@@ -65,13 +65,13 @@ Com base no conteúdo desta sessão, gere um MINI-CONTEÚDO EDUCATIVO que ajude 
     try:
         client = OpenAI(api_key=Config.GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.5,
-            max_tokens=350
+            max_tokens=1200
         )
         recommendation = (response.choices[0].message.content or "").strip()
         return jsonify({"recommendation": recommendation, "type": "proactive"}), 200
@@ -141,10 +141,10 @@ REGRAS ABSOLUTAS:
     try:
         client = OpenAI(api_key=Config.GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b", extra_body={"reasoning_effort": "low"},
             messages=messages,
             temperature=0.4,
-            max_tokens=300
+            max_tokens=1200
         )
         answer = (response.choices[0].message.content or "").strip()
         return jsonify({"answer": answer}), 200
